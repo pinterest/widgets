@@ -1,0 +1,2 @@
+Source code for Pinterest Widgets is made available under the Pinterest Developer Terms of Service, 
+which may be found at http://developers.pinterest.com/terms/
