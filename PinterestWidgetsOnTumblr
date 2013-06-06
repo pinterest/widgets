@@ -1,3 +1,5 @@
+// see http://engineering.pinterest.com/post/52094692633/how-to-make-pinterest-widgets-work-on-tumblr 
+// for instructions and explanation
 <script>
 // be sure this script doesn't mess up anything else on this page
 (function (d, att) {
