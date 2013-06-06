@@ -1,0 +1,45 @@
+<script>
+// be sure this script doesn't mess up anything else on this page
+(function (d, att) {
+  // declare some variables
+  var link, pair, part, i, j, k, n, hazWidget, script;
+  // find all the links on the page
+  link = d.getElementsByTagName('A');
+  // go through them one at a time
+  for (i = 0, n = link.length; i < n; i = i + 1) {
+    // do we have a rev and a class name that matches our pattern?
+    if (link[i][att]) {
+      // split the attribute into individual directives
+      pair = link[i][att].split(' ');
+      // loop through each directive
+      for (j = 0, k = pair.length; j < k; j = j + 1) {
+        // split into parts: first is key, second is value
+        part = pair[j].split('=');
+        // do we have two parts?
+        if (part[0] && part[1]) {
+          // set the attribute on the link
+          link[i].setAttribute(part[0], part[1]);
+          // after this is all done, build a widget
+          if (part[0] === 'data-pin-do') {
+            hazWidget = true;
+          }
+        }
+      }
+    }
+  }
+  // do we need to build a widget?
+  if (hazWidget === true) {
+    // make a script
+    script = d.createElement('SCRIPT');
+    // set the type
+    script.setAttribute('type', 'text/javascript');
+    // set the character set
+    script.setAttribute('charset', 'utf-8');
+    // set the source
+    script.setAttribute('src', '//assets.pinterest.com/js/pinit.js');
+    // carefully append it to the body
+    d.getElementsByTagName('BODY')[0].appendChild(script);
+  }
+// if you would like to use some other attribute instead of rev, change it here
+}(document, 'rev'));
+</script>
