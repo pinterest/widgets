@@ -1,4 +1,4 @@
-// simplify logging calls
+// translated strings: now serving en, de, fr, es, nl, and two flavors of pt
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -354,7 +354,7 @@
         makeFooter: function (a, type) {
           var ft = $.f.make({'A': { 'className': $.a.k + '_embed_board_ft', 'href': a.href, 'target': '_blank'}});
           if ($.v.renderedWidth > $.a.tile.minWidthToShowAuxText) {
-            ft.innerHTML = 'See On';
+            ft.innerHTML = $.v.strings.seeOn;
           }
           $.f.set(ft, $.a.dataAttributePrefix + 'log', type);
           var logo = $.f.make({'SPAN': { 'className': $.a.k + '_embed_board_ft_logo'}});
@@ -464,7 +464,7 @@
                 };
 
                 // this button should open the widget builder with this pin in preview
-                var getThis = $.f.make({'I': {'className': $.a.k + '_getThis', 'innerHTML': 'get this<i></i>', 'data-pin-id': pin.id}});
+                var getThis = $.f.make({'I': {'className': $.a.k + '_getThis', 'innerHTML': $.v.strings.getThis + '<i></i>', 'data-pin-id': pin.id}});
                 link.appendChild(getThis);
                 getThis.onclick = function () {
                   var pinId = $.f.get(this, 'data-pin-id');
@@ -492,7 +492,7 @@
                       'src': pin.attribution.provider_icon_url
                     }
                   }));
-                  attribution.appendChild($.f.make({'SPAN':{'className': $.a.k + '_embed_pin_attrib',  'innerHTML': 'by <a href="' + pin.attribution.url + '" target="_blank">' + pin.attribution.author_name + '</a>'}}));
+                  attribution.appendChild($.f.make({'SPAN':{'className': $.a.k + '_embed_pin_attrib',  'innerHTML': $.v.strings.attribTo + ' <a href="' + pin.attribution.url + '" target="_blank">' + pin.attribution.author_name + '</a>'}}));
                   description.appendChild(attribution);
                 }
                 container.appendChild(description);
@@ -511,7 +511,7 @@
                     }
                   }));
                   pinner.appendChild($.f.make({
-                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': 'Pinned by <em class="' + $.a.k + '_embed_pin_text_container_em">' + pin.pinner.full_name + '</em>'}
+                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.pinnedBy + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + pin.pinner.full_name + '</em>'}
                   }));
                   pinner.appendChild($.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}}));
                   container.appendChild(pinner);
@@ -536,7 +536,7 @@
                     }
                   }));
                   board.appendChild($.f.make({
-                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': 'Onto <em class="' + $.a.k + '_embed_pin_text_container_em">' + pin.board.name + '</em>'}
+                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.onto + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + pin.board.name + '</em>'}
                   }));
                   board.appendChild($.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}}));
                   container.appendChild(board);
@@ -595,7 +595,7 @@
               $.f.set(title, $.a.dataAttributePrefix + 'log', 'embed_board');
               hd.appendChild(title);
               if ($.v.renderedWidth > $.a.tile.minWidthToShowAuxText) {
-                var author = $.f.make({'A': { 'log': 'embed_board', 'className': $.a.k + '_embed_board_author', 'innerHTML': r.data.user.full_name, 'target': '_blank', 'href': parent.href}});
+                var author = $.f.make({'A': { 'log': 'embed_board', 'className': $.a.k + '_embed_board_author', 'innerHTML': '<span>' + $.v.strings.attribTo + '</span> ' + r.data.user.full_name, 'target': '_blank', 'href': parent.href}});
                 $.f.set(author, $.a.dataAttributePrefix + 'log', 'embed_board');
                 hd.appendChild(author);
               } else {
@@ -854,8 +854,25 @@
             'resolution': 1,
             'here': $.d.URL.split('#')[0],
             'hazFloatingButton': false,
-            'config': {}
+            'config': {},
+            'strings': $.a.strings.en
           };
+
+          // do we need to switch languages from en to something else?
+          var lang = $.d.getElementsByTagName('HTML')[0].getAttribute('lang');
+          if (lang) {
+            lang = lang.toLowerCase();
+            // direct match for pt-br
+            if (typeof $.a.strings[lang] === 'object') {
+              $.v.strings = $.a.strings[lang];
+            } else {
+              // match first part: en-uk = en
+              lang = lang.split('-')[0];
+              if (typeof $.a.strings[lang] === 'object') {
+                $.v.strings = $.a.strings[lang];
+              }
+            }
+          }
 
           if ($.w.devicePixelRatio && $.w.devicePixelRatio >= 2) {
             $.v.resolution = 2;
@@ -932,7 +949,57 @@
       'padding': 10
     }
   },
-
+  'strings': {
+    'en': {
+      'seeOn': 'See On',
+      'getThis': 'get this',
+      'attribTo': 'by',
+      'pinnedBy': 'Pinned by',
+      'onto': 'Onto'
+    },
+    'de': {
+      'seeOn': 'Ansehen auf',
+      'getThis': 'bekomme',
+      'attribTo': 'von',
+      'pinnedBy': 'Gepinnt von',
+      'onto': 'Auf'
+    },
+    'es': {
+      'seeOn': 'Ver En',
+      'getThis': 'obtener',
+      'attribTo': 'por',
+      'pinnedBy': 'Pineado por',
+      'onto': 'En'
+    },
+    'fr': {
+      'seeOn': 'Voir sur',
+      'getThis': 'obtenir',
+      'attribTo': 'par',
+      'pinnedBy': '&#201;pingl&#233; par',
+      'onto': 'Sur'
+    },
+    'nl': {
+      'seeOn': 'Bekijken op',
+      'getThis': 'krijg',
+      'attribTo': 'door',
+      'pinnedBy': 'Gepind door',
+      'onto': 'Op'
+    },
+    'pt': {
+      'seeOn': 'Ver em',
+      'getThis': 'obter',
+      'attribTo': 'por',
+      'pinnedBy': 'Pin afixado por',
+      'onto': 'Em'
+    },
+    'pt-br': {
+      'seeOn': 'Ver em',
+      'getThis': 'obter',
+      'attribTo': 'por',
+      'pinnedBy': 'Pinado por',
+      'onto': 'Em'
+    }
+  },
   // CSS rules
   'rules': [
 
@@ -1039,7 +1106,7 @@
     'span._embed_board span._embed_board_hd a._embed_board_name { position: absolute; left: 0; text-align: left; font-family: Georgia; font-size: 16px; color:#2b1e1e;}',
     // author
     'span._embed_board span._embed_board_hd a._embed_board_author { position: absolute; right: 0; text-align: right; font-family: Helvetica; font-size: 11px; color: #746d6a; font-weight: bold;}',
-    'span._embed_board span._embed_board_hd a._embed_board_author::before { content:"by "; font-weight: normal; }',
+    'span._embed_board span._embed_board_hd a._embed_board_author span { font-weight: normal; }',
     // image container
     'span._embed_board span._embed_board_bd { display:block; margin: 0 10px; overflow: hidden; border-radius: 2px; position: relative; }',
     // each thumbnail
