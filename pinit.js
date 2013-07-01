@@ -1,4 +1,4 @@
-// translated strings: now serving en, de, fr, es, nl, and two flavors of pt
+// add alt and title attributes to embedded pin widget link and image
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -443,9 +443,9 @@
                 }
 
                 // main image
-                var link = $.f.make({'A': { 'className': $.a.k + '_embed_pin_link', 'href': 'http://pinterest.com/pin/' + pin.id + '/', 'target': '_blank'}});
+                var link = $.f.make({'A': { 'className': $.a.k + '_embed_pin_link', 'title': pin.description, 'href': 'http://pinterest.com/pin/' + pin.id + '/', 'target': '_blank'}});
 
-                var img = $.f.make({'IMG': {'className': $.a.k + '_embed_pin_link_img', 'nopin': 'true', 'src': thumb.url, 'width': thumb.width, 'height': thumb.height}});
+                var img = $.f.make({'IMG': {'className': $.a.k + '_embed_pin_link_img', 'alt': pin.description, 'nopin': 'true', 'src': thumb.url, 'width': thumb.width, 'height': thumb.height}});
                 img.style.width = thumb.width + 'px';
                 img.style.height = thumb.height + 'px';
                 link.appendChild(img);
