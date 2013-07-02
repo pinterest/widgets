@@ -1,4 +1,4 @@
-// add alt and title attributes to embedded pin widget link and image
+// try to fix bad Pin It button parameters before logging an error and popping the bookmarklet
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -640,6 +640,18 @@
           return ret;
         },
 
+        fixUrl: function (str) {
+          if (!str.match(/%2F/)) {
+            str = encodeURIComponent(str);
+            $.f.debug('encoding URL');
+          }
+          if (!str.match(/^http/)) {
+            str = 'http%3A%2F%2F' + str;
+            $.f.debug('prepending scheme');
+          }
+          return str;
+        },
+
         render: {
           buttonBookmark: function (el) {
             $.f.debug('build bookmarklet button');
@@ -671,7 +683,36 @@
           buttonPin: function (el) {
             $.f.debug('build Pin It button');
 
-            var a = $.f.make({'A': {'href': el.href, 'className': $.a.k + '_pin_it_button ' + $.a.k + '_pin_it_button_inline', 'target': '_blank'}});
+            // get just the url, media, and description parameters and percent-encode them, if needed
+            var href, q;
+            q = $.f.parse(el.href, {'url': true, 'media': true, 'description': true});
+            if (q.media) {
+              q.media = $.f.fixUrl(q.media);
+            } else {
+              // misconfigured: no media URL was given
+              q.media = '';
+              $.f.debug('no media found; click will pop bookmark');
+            }
+            if (q.url) {
+              q.url = $.f.fixUrl(q.url);
+            } else {
+              // misconfigured: no page URL was given
+              q.url = encodeURIComponent($.d.URL);
+              $.f.debug('no url found; click will pin this page');
+            }
+            if (q.description) {
+              // there's an unencoded space in here somewhere; encode entire string
+              if (q.description.split(' ').length && !q.description.match(/%20/)) {
+                // misconfigured: encode description
+                q.description = encodeURIComponent(q.description);
+              }
+            } else {
+              q.description = '';
+            }
+
+            href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&description=' + q.description;
+
+            var a = $.f.make({'A': {'href': href, 'className': $.a.k + '_pin_it_button ' + $.a.k + '_pin_it_button_inline', 'target': '_blank'}});
             $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_pinit');
 
             var config = $.f.getData(el, 'config');
@@ -704,12 +745,10 @@
             };
 
             // prevent old bad buttons from throwing errors
-            var q = el.href.split('url=');
-            if (q[1]) {
-              var url = q[1].split('&')[0];
+            if (q.url) {
               var span = $.f.make({'SPAN': {'className': $.a.k + '_hidden', 'id': $.a.k + '_pin_count_' + $.f.callback.length, 'innerHTML': '<i></i>'}});
               a.appendChild(span);
-              $.f.getPinCount(url);
+              $.f.getPinCount(q.url);
               $.f.replace(el, a);
             }
           },
