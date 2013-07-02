@@ -1,4 +1,4 @@
-// try to fix bad Pin It button parameters before logging an error and popping the bookmarklet
+// Fix Macbook retina image bug for embedded pin widget
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -239,23 +239,18 @@
 
         // a click!
         click: function (v) {
-          var t, el, log;
-          t = v || $.w.event;
-          el = $.f.getEl(t);
-          if (el && el !== $.d.b) {
-            if (!$.f.getData(el, 'log')) {
-              el = el.parentNode;
-            }
+          v = v || $.w.event;
+          var el, log;
+          el = $.f.getEl(v);
+          if (el) {
+            // log this click
             log = $.f.getData(el, 'log');
             if (log) {
-              if ($.f.get(el, 'href').match(/pinterest/)) {
-                // gray out the button
-                if (!el.className.match(/hazClick/)) {
-                  el.className = el.className + ' ' + $.a.k + '_hazClick';
-                }
-                // log this click
-                $.f.log('&type=' + log + '&href=' + encodeURIComponent(el.href));
-              }
+              $.f.log('&type=' + log + '&href=' + encodeURIComponent(el.href || $.f.getData(el, 'href')));
+            }
+            // gray out the button
+            if (!el.className.match(/hazClick/)) {
+              el.className = el.className + ' ' + $.a.k + '_hazClick';
             }
           }
         },
@@ -446,19 +441,23 @@
                 var link = $.f.make({'A': { 'className': $.a.k + '_embed_pin_link', 'title': pin.description, 'href': 'http://pinterest.com/pin/' + pin.id + '/', 'target': '_blank'}});
 
                 var img = $.f.make({'IMG': {'className': $.a.k + '_embed_pin_link_img', 'alt': pin.description, 'nopin': 'true', 'src': thumb.url, 'width': thumb.width, 'height': thumb.height}});
+                $.f.set(img, $.a.dataAttributePrefix + 'log', 'image_from_embedded_pin');
+                $.f.set(img, $.a.dataAttributePrefix + 'href', 'http://pinterest.com/pin/' + pin.id + '/');
                 img.style.width = thumb.width + 'px';
                 img.style.height = thumb.height + 'px';
                 link.appendChild(img);
 
                 // pin it button
                 var repin = $.f.make({'I': {'className': $.a.k + '_repin', 'data-pin-id': pin.id }});
+                $.f.set(repin, $.a.dataAttributePrefix + 'log', 'repin');
+                $.f.set(repin, $.a.dataAttributePrefix + 'href', $.a.endpoint.repin.replace(/%s/, pin.id));
+
                 link.appendChild(repin);
                 repin.onclick = function () {
                   if (!this.className.match(/hazClick/)) {
                     this.className = this.className + ' ' + $.a.k + '_hazClick';
                   }
                   var href = $.a.endpoint.repin.replace(/%s/, $.f.get(this, 'data-pin-id'));
-                  $.f.log('&type=repin&href=' + encodeURIComponent(href));
                   $.w.open(href, 'pin' + new Date().getTime(), $.a.popLarge);
                   return false;
                 };
@@ -502,7 +501,6 @@
                   $.f.debug('Building pinner line');
 
                   var pinner = $.f.make({'A': {'className': $.a.k + '_embed_pin_text', 'href': pin.pinner.profile_url, 'target': '_blank'}});
-                  $.f.set(pinner, $.a.dataAttributePrefix + 'log', 'pinner_from_embedded_pin');
 
                   pinner.appendChild($.f.make({
                     'IMG': {
@@ -513,7 +511,12 @@
                   pinner.appendChild($.f.make({
                     'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.pinnedBy + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + pin.pinner.full_name + '</em>'}
                   }));
-                  pinner.appendChild($.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}}));
+
+                  var pinnerShield = $.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}});
+                  $.f.set(pinnerShield, $.a.dataAttributePrefix + 'log', 'pinner_from_embedded_pin');
+                  $.f.set(pinnerShield, $.a.dataAttributePrefix + 'href', pin.pinner.profile_url);
+                  pinner.appendChild(pinnerShield);
+
                   container.appendChild(pinner);
                 }
 
@@ -528,7 +531,6 @@
                   }
 
                   var board = $.f.make({'A': {'className': $.a.k + '_embed_pin_text', 'href': pin.board.url, 'target': '_blank'}});
-                  $.f.set(board, $.a.dataAttributePrefix + 'log', 'board_from_embedded_pin');
                   board.appendChild($.f.make({
                     'IMG': {
                       'className': $.a.k + '_embed_pin_text_avatar',
@@ -538,7 +540,12 @@
                   board.appendChild($.f.make({
                     'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.onto + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + pin.board.name + '</em>'}
                   }));
-                  board.appendChild($.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}}));
+
+                  var boardShield = $.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}});
+                  $.f.set(boardShield, $.a.dataAttributePrefix + 'log', 'board_from_embedded_pin');
+                  $.f.set(boardShield, $.a.dataAttributePrefix + 'href', pin.board.url);
+                  board.appendChild(boardShield);
+
                   container.appendChild(board);
                 }
 
@@ -736,11 +743,6 @@
                 $.f.log('&type=config_error&error_msg=invalid_url&href=' + encodeURIComponent($.d.URL));
                 $.f.fireBookmark();
               }
-              // do we have an additional message to log on click?
-              if ($.v.logOnClick) {
-                $.f.log($.v.logOnClick);
-                $.v.logOnClick = null;
-              }
               return false;
             };
 
@@ -826,8 +828,6 @@
                 }
                 // fix the link
                 $.f.set(link[i], 'data-pin-config', legacyConfig);
-                // log an error if this button gets clicked
-                $.v.logOnClick = '&type=config_error&error_msg=legacy_config&href=' + encodeURIComponent($.d.URL);
               }
 
               if (typeof $.f.render[doThis] === 'function') {
@@ -1096,13 +1096,13 @@
     'span._embed_pin img { border: 0; margin: 0; padding: 0;}',
 
     // repin button
-    'span._embed_pin a._embed_pin_link i._repin { left: 10px; top: 10px; position: absolute; height: 33px; width: 64px; background-size: 64px 99px; background: transparent url(_cdn/images/pidgets/repin_rez.png); }',
+    'span._embed_pin a._embed_pin_link i._repin { left: 10px; top: 10px; position: absolute; height: 33px; width: 64px; background: transparent url(_cdn/images/pidgets/repin_rez.png); background-size: 64px 99px; }',
     'span._embed_pin a._embed_pin_link i._repin:hover { background-position: 0 -33px; }',
     'span._embed_pin a._embed_pin_link i._repin._hazClick { background-position: 0 -66px; }',
 
     // "get this" hoverbutton
     'span._embed_pin a._embed_pin_link i._getThis { display: none }',
-    'span._embed_pin a._embed_pin_link:hover i._getThis, span._embed_pin a._embed_pin_link:hover i._getThis i { background: transparent url(_cdn/images/pidgets/bfs_rez.png) }',
+    'span._embed_pin a._embed_pin_link:hover i._getThis, span._embed_pin a._embed_pin_link:hover i._getThis i { background: transparent url(_cdn/images/pidgets/bfs1.png) }',
 
     // text container and hover state
     'span._embed_pin a._embed_pin_link:hover i._getThis { color: #555; display: inline-block; font: normal normal normal 11px/20px "Helvetica Neue",helvetica,arial,san-serif; height: 20px; margin: 0; padding: 0 1px 0 5px; position: absolute; bottom: 10px; right: 10px; text-decoration: none;  }',
