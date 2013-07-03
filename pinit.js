@@ -1,4 +1,4 @@
-// Fix Macbook retina image bug for embedded pin widget
+// repair broken URL fixer; thank you @davemichel
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -648,7 +648,7 @@
         },
 
         fixUrl: function (str) {
-          if (!str.match(/%2F/)) {
+          if (decodeURIComponent(str) === str) {
             str = encodeURIComponent(str);
             $.f.debug('encoding URL');
           }
