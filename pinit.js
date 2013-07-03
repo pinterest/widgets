@@ -1,4 +1,4 @@
-// repair broken URL fixer; thank you @davemichel
+// separate percentEncode function
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -647,14 +647,19 @@
           return ret;
         },
 
-        fixUrl: function (str) {
+        percentEncode: function (str) {
           if (decodeURIComponent(str) === str) {
             str = encodeURIComponent(str);
-            $.f.debug('encoding URL');
+            $.f.debug('encoded string: ' + str);
           }
+          return str;
+        },
+
+        fixUrl: function (str) {
+          str = $.f.percentEncode(str);
           if (!str.match(/^http/)) {
             str = 'http%3A%2F%2F' + str;
-            $.f.debug('prepending scheme');
+            $.f.debug('prepended scheme: ' + str);
           }
           return str;
         },
@@ -700,6 +705,7 @@
               q.media = '';
               $.f.debug('no media found; click will pop bookmark');
             }
+
             if (q.url) {
               q.url = $.f.fixUrl(q.url);
             } else {
@@ -707,16 +713,12 @@
               q.url = encodeURIComponent($.d.URL);
               $.f.debug('no url found; click will pin this page');
             }
+
             if (q.description) {
-              // there's an unencoded space in here somewhere; encode entire string
-              if (q.description.split(' ').length && !q.description.match(/%20/)) {
-                // misconfigured: encode description
-                q.description = encodeURIComponent(q.description);
-              }
+              q.description = $.f.percentEncode(q.description);
             } else {
               q.description = '';
             }
-
             href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&description=' + q.description;
 
             var a = $.f.make({'A': {'href': href, 'className': $.a.k + '_pin_it_button ' + $.a.k + '_pin_it_button_inline', 'target': '_blank'}});
