@@ -1,4 +1,4 @@
-// separate percentEncode function
+// do not attempt to percent-encode Pin It button descriptions
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -714,9 +714,7 @@
               $.f.debug('no url found; click will pin this page');
             }
 
-            if (q.description) {
-              q.description = $.f.percentEncode(q.description);
-            } else {
+            if (!q.description) {
               q.description = '';
             }
             href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&description=' + q.description;
