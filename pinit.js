@@ -1,4 +1,4 @@
-// do not attempt to percent-encode Pin It button descriptions
+// only add hazClick class name to things we made
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -247,10 +247,10 @@
             log = $.f.getData(el, 'log');
             if (log) {
               $.f.log('&type=' + log + '&href=' + encodeURIComponent(el.href || $.f.getData(el, 'href')));
-            }
-            // gray out the button
-            if (!el.className.match(/hazClick/)) {
-              el.className = el.className + ' ' + $.a.k + '_hazClick';
+              // gray out the button
+              if (!el.className.match(/hazClick/)) {
+                el.className = el.className + ' ' + $.a.k + '_hazClick';
+              }
             }
           }
         },
