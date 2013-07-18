@@ -1,4 +1,4 @@
-// only add hazClick class name to things we made
+// move logging endpoint to log.pinterest.com
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -947,7 +947,7 @@
     'repin': '//pinterest.com/pin/%s/repin/x/',
     'board': '//widgets.pinterest.com/v3/pidgets/boards/',
     'user': '//widgets.pinterest.com/v3/pidgets/users/',
-    'log': '//widgets.pinterest.com/v3/pidgets/log/',
+    'log': '//log.pinterest.com/',
     'create': '//pinterest.com/pin/create/button/?'
   },
   'config': {
@@ -962,7 +962,7 @@
   'countSource': 6,
   'dataAttributePrefix': 'data-pin-',
   // valid config parameters
-  'configParam': [ 'build', 'do-not-log', 'debug', 'style', 'hover'],
+  'configParam': [ 'build', 'debug', 'style', 'hover'],
   // configuration for the pop-up window
   'pop': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=632,height=270,left=0,top=0',
   'popLarge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=900,height=500,left=0,top=0',
