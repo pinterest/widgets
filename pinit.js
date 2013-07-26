@@ -1,4 +1,5 @@
-// move logging endpoint to log.pinterest.com
+// add a guid for conversion tracking
+// deep-link to the Pinterest app on IOS devices
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -188,7 +189,7 @@
             // get position, start href
             var p = $.f.getPos(img), href = $.a.endpoint.create;
             // set the button href
-            href = href + 'url=' + encodeURIComponent($.d.URL) + '&media=' + encodeURIComponent(img.src) + '&description=' + encodeURIComponent(img.getAttribute('data-pin-description') || img.title || img.alt || $.d.title);
+            href = href + 'url=' + encodeURIComponent($.d.URL) + '&media=' + encodeURIComponent(img.src) + '&description=' + encodeURIComponent(img.getAttribute('data-pin-description') || img.title || img.alt || $.d.title) + '&guid=' + $.v.guid;
             $.s.floatingButton.href = href;
             // pop new window and hide on click
             $.s.floatingButton.onclick = function () {
@@ -664,6 +665,55 @@
           return str;
         },
 
+        // deep link to Pinterest apps
+        deepLink: {
+          ios_safari: function (a) {
+            var shallow, deep, start, count, amount, delay, watchForError;
+
+            // link target points to pin/create/button/?url=foo&media=bar
+            shallow = a.href;
+
+            // make the deep-link URL
+            deep = shallow.split('?')[1];
+            deep = deep.replace(/url=/, 'source_url=');
+            deep = deep.replace(/media=/, 'image_url=');
+            deep = 'pinit://pinit/?' + deep;
+
+            // start the clock ticking
+            start = new Date().getTime();
+            count = 0;
+            amount = 10;
+            delay = 80;
+
+            // watch for the clock to fall out of sync, meaning Safari can't find the app
+            watchForError = function () {
+              $.w.setTimeout(function () {
+                if (count < amount) {
+                  // keep watching
+                  watchForError();
+                } else {
+                  // is our clock out of sync?
+                  var since = start + (count * delay);
+                  var now = new Date().getTime();
+                  var diff = (now - since) / amount;
+                  // yes: Safari has tried to pop the app but failed
+                  if (diff < delay) {
+                    // send us over to pin/create/button (dismisses error pop-up)
+                    $.w.location = shallow;
+                  }
+                }
+                count = count + 1;
+              }, delay);
+            };
+
+            // attempt to pop the Pinterest application
+            $.w.location = deep;
+
+            // if we're still here, start watching the clock
+            watchForError();
+          }
+        },
+
         render: {
           buttonBookmark: function (el) {
             $.f.debug('build bookmarklet button');
@@ -717,7 +767,7 @@
             if (!q.description) {
               q.description = '';
             }
-            href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&description=' + q.description;
+            href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&description=' + q.description + '&guid=' + $.v.guid;
 
             var a = $.f.make({'A': {'href': href, 'className': $.a.k + '_pin_it_button ' + $.a.k + '_pin_it_button_inline', 'target': '_blank'}});
             $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_pinit');
@@ -737,7 +787,13 @@
               // found valid URLs?
               if (q.url && q.url.match(/^http/) && q.media && q.media.match(/^http/)) {
                 // yes
-                $.w.open(this.href, 'pin' + new Date().getTime(), $.a.pop);
+                if (typeof $.f.deepLink[$.v.deepBrowser] === 'function') {
+                  // deep link
+                  $.f.deepLink[$.v.deepBrowser](this);
+                } else {
+                  // pop the pin form
+                  $.w.open(this.href, 'pin' + new Date().getTime(), $.a.pop);
+                }
               } else {
                 // log an error with descriptive message
                 $.f.log('&type=config_error&error_msg=invalid_url&href=' + encodeURIComponent($.d.URL));
@@ -873,15 +929,14 @@
         // send logging information
         log: function (str) {
             // create the logging call
-            var query = '?via=' + encodeURIComponent($.v.here);
+            var query = '?via=' + encodeURIComponent($.v.here) + '&guid=' + $.v.guid;
 
             // add the optional string to log
-            if (query) {
+            if (str) {
               query = query + str;
             }
 
             $.f.call($.a.endpoint.log + query, $.f.ping.log);
-
         },
 
         init : function () {
@@ -894,8 +949,23 @@
             'here': $.d.URL.split('#')[0],
             'hazFloatingButton': false,
             'config': {},
-            'strings': $.a.strings.en
+            'strings': $.a.strings.en,
+            'guid': '',
+            'deepBrowser': null
           };
+
+          // are we using an IOS device?
+          if ($.w.navigator.userAgent.match(/iP/) !== null) {
+            // we're on an IOS device. Don't deep link from inside the Pinterest app or Chrome.
+            if ($.w.navigator.userAgent.match(/Pinterest/) === null && $.w.navigator.userAgent.match(/CriOS/) === null) {
+              $.v.deepBrowser = 'ios_safari';
+            }
+          }
+
+          // make a 12-digit base-60 number for conversion tracking
+          for (var i = 0; i < 12; i = i + 1) {
+            $.v.guid = $.v.guid + '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ_abcdefghijkmnopqrstuvwxyz'.substr(Math.floor(Math.random() * 60), 1);
+          }
 
           // do we need to switch languages from en to something else?
           var lang = $.d.getElementsByTagName('HTML')[0].getAttribute('lang');
