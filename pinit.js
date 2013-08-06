@@ -1,5 +1,5 @@
-// add a guid for conversion tracking
-// deep-link to the Pinterest app on IOS devices
+// filter API output before sending to innerHTML
+// thank you: @Tiszka
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -189,7 +189,7 @@
             // get position, start href
             var p = $.f.getPos(img), href = $.a.endpoint.create;
             // set the button href
-            href = href + 'url=' + encodeURIComponent($.d.URL) + '&media=' + encodeURIComponent(img.src) + '&description=' + encodeURIComponent(img.getAttribute('data-pin-description') || img.title || img.alt || $.d.title) + '&guid=' + $.v.guid;
+            href = href + 'url=' + encodeURIComponent($.d.URL) + '&media=' + encodeURIComponent(img.src) + '&guid=' + $.v.guid + '&description=' + encodeURIComponent(img.getAttribute('data-pin-description') || img.title || img.alt || $.d.title);
             $.s.floatingButton.href = href;
             // pop new window and hide on click
             $.s.floatingButton.onclick = function () {
@@ -254,6 +254,18 @@
               }
             }
           }
+        },
+
+        filter: function (str) {
+          var decoded, ret;
+          decoded = '';
+          ret = '';
+          try {
+            decoded = decodeURIComponent(str);
+          } catch (e) { }
+          ret = decoded.replace(/</g, '&lt;');
+          ret = ret.replace(/>/g, '&gt;');
+          return ret;
         },
 
         behavior: function () {
@@ -475,7 +487,7 @@
                 container.appendChild(link);
 
                 // description
-                var description = $.f.make({'SPAN': {'className': $.a.k + '_embed_pin_desc', 'innerHTML': pin.description}});
+                var description = $.f.make({'SPAN': {'className': $.a.k + '_embed_pin_desc', 'innerHTML': $.f.filter(pin.description)}});
 
                 // partner attribution
                 if (pin.attribution && pin.attribution.url && pin.attribution.author_name && pin.attribution.provider_icon_url) {
@@ -492,7 +504,7 @@
                       'src': pin.attribution.provider_icon_url
                     }
                   }));
-                  attribution.appendChild($.f.make({'SPAN':{'className': $.a.k + '_embed_pin_attrib',  'innerHTML': $.v.strings.attribTo + ' <a href="' + pin.attribution.url + '" target="_blank">' + pin.attribution.author_name + '</a>'}}));
+                  attribution.appendChild($.f.make({'SPAN':{'className': $.a.k + '_embed_pin_attrib',  'innerHTML': $.v.strings.attribTo + ' <a href="' + pin.attribution.url + '" target="_blank">' + $.f.filter(pin.attribution.author_name) + '</a>'}}));
                   description.appendChild(attribution);
                 }
                 container.appendChild(description);
@@ -510,7 +522,7 @@
                     }
                   }));
                   pinner.appendChild($.f.make({
-                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.pinnedBy + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + pin.pinner.full_name + '</em>'}
+                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.pinnedBy + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.pinner.full_name) + '</em>'}
                   }));
 
                   var pinnerShield = $.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}});
@@ -539,7 +551,7 @@
                     }
                   }));
                   board.appendChild($.f.make({
-                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.onto + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + pin.board.name + '</em>'}
+                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.onto + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.board.name) + '</em>'}
                   }));
 
                   var boardShield = $.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}});
@@ -569,7 +581,7 @@
                 container.className = container.className + ' ' + $.a.k + '_fancy';
               }
               var hd = $.f.make({'SPAN': { 'className': $.a.k + '_embed_board_hd'}});
-              var title = $.f.make({'A': {'className': $.a.k + '_embed_board_title', 'innerHTML': r.data.user.full_name, 'target': '_blank', 'href': parent.href}});
+              var title = $.f.make({'A': {'className': $.a.k + '_embed_board_title', 'innerHTML': $.f.filter(r.data.user.full_name), 'target': '_blank', 'href': parent.href}});
               $.f.set(title, $.a.dataAttributePrefix + 'log', 'embed_user');
 
               hd.appendChild(title);
@@ -599,11 +611,11 @@
               // need to know width before making header
               var bd = $.f.tile(parent, r.data.pins);
               var hd = $.f.make({'SPAN': { 'className': $.a.k + '_embed_board_hd'}});
-              var title = $.f.make({'A': { 'className': $.a.k + '_embed_board_name', 'innerHTML': r.data.board.name, 'target': '_blank', 'href': parent.href}});
+              var title = $.f.make({'A': { 'className': $.a.k + '_embed_board_name', 'innerHTML': $.f.filter(r.data.board.name), 'target': '_blank', 'href': parent.href}});
               $.f.set(title, $.a.dataAttributePrefix + 'log', 'embed_board');
               hd.appendChild(title);
               if ($.v.renderedWidth > $.a.tile.minWidthToShowAuxText) {
-                var author = $.f.make({'A': { 'log': 'embed_board', 'className': $.a.k + '_embed_board_author', 'innerHTML': '<span>' + $.v.strings.attribTo + '</span> ' + r.data.user.full_name, 'target': '_blank', 'href': parent.href}});
+                var author = $.f.make({'A': { 'log': 'embed_board', 'className': $.a.k + '_embed_board_author', 'innerHTML': '<span>' + $.v.strings.attribTo + '</span> ' + $.f.filter(r.data.user.full_name), 'target': '_blank', 'href': parent.href}});
                 $.f.set(author, $.a.dataAttributePrefix + 'log', 'embed_board');
                 hd.appendChild(author);
               } else {
@@ -767,7 +779,7 @@
             if (!q.description) {
               q.description = '';
             }
-            href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&description=' + q.description + '&guid=' + $.v.guid;
+            href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&guid=' + $.v.guid + '&description=' + q.description;
 
             var a = $.f.make({'A': {'href': href, 'className': $.a.k + '_pin_it_button ' + $.a.k + '_pin_it_button_inline', 'target': '_blank'}});
             $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_pinit');
