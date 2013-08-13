@@ -1,5 +1,4 @@
-// filter API output before sending to innerHTML
-// thank you: @Tiszka
+// be smarter about fixing misconfigured URLs
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -660,19 +659,26 @@
           return ret;
         },
 
-        percentEncode: function (str) {
-          if (decodeURIComponent(str) === str) {
-            str = encodeURIComponent(str);
-            $.f.debug('encoded string: ' + str);
-          }
-          return str;
-        },
-
+        // encode and prepend http: and/or // to URLs
         fixUrl: function (str) {
-          str = $.f.percentEncode(str);
-          if (!str.match(/^http/)) {
-            str = 'http%3A%2F%2F' + str;
-            $.f.debug('prepended scheme: ' + str);
+          // see if this string has been url-encoded
+          var decoded = '';
+          // try-catch because decodeURIComponent throws errors
+          try {
+            decoded = decodeURIComponent(str);
+          } catch (e) { }
+          // encode string if decoded matches original
+          if (decoded === str) {
+            str = encodeURIComponent(str);
+          }
+          // does it start with http?
+          if (!str.match(/^http/i)) {
+            // does it start with //
+            if (!str.match(/^%2F%2F/i)) {
+              str = '%2F%2F' + str;
+            }
+            str = 'http%3A' + str;
+            $.f.debug('fixed URL: ' + str);
           }
           return str;
         },
@@ -797,7 +803,7 @@
               // search for url and media in this button's href
               var q = $.f.parse(this.href, {'url': true, 'media': true});
               // found valid URLs?
-              if (q.url && q.url.match(/^http/) && q.media && q.media.match(/^http/)) {
+              if (q.url && q.url.match(/^http/i) && q.media && q.media.match(/^http/i)) {
                 // yes
                 if (typeof $.f.deepLink[$.v.deepBrowser] === 'function') {
                   // deep link
@@ -824,14 +830,16 @@
           },
           buttonFollow: function (el) {
             $.f.debug('build follow button');
-            var uid = el.href.split('/')[3];
-            if (uid) {
-              var a = $.f.make({'A': {'target': '_blank', 'href': el.href, 'innerHTML': el.innerHTML, 'className': $.a.k + '_follow_me_button' }});
-              a.appendChild($.f.make({'B': {}}));
-              a.appendChild($.f.make({'I': {}}));
-              $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_follow');
-              $.f.replace(el, a);
+            var className = '_follow_me_button';
+            var render = $.f.getData(el, 'render');
+            if (render) {
+              className = className + '_' + render;
             }
+            var a = $.f.make({'A': {'target': '_blank', 'href': el.href, 'innerHTML': el.innerHTML, 'className': $.a.k + className }});
+            a.appendChild($.f.make({'B': {}}));
+            a.appendChild($.f.make({'I': {}}));
+            $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_follow');
+            $.f.replace(el, a);
           },
           embedPin: function (el) {
             $.f.debug('build embedded pin');
@@ -1150,7 +1158,7 @@
     // FOLLOW ME ON PINTEREST BUTTON
 
     // background images (last selector) have no semicolon, so they don't get an !important
-    'a._follow_me_button, a._follow_me_button i { background: transparent url(_cdn/images/pidgets/bfs_rez.png) 0 0 no-repeat }',
+    'a._follow_me_button, a._follow_me_button i { background-size: 200px 60px; background: transparent url(_cdn/images/pidgets/bfs_rez.png) 0 0 no-repeat }',
     'a._follow_me_button { color: #444; display: inline-block; font: bold normal normal 11px/20px "Helvetica Neue",helvetica,arial,san-serif; height: 20px; margin: 0; padding: 0; position: relative; text-decoration: none; text-indent: 19px; vertical-align: baseline;}',
     'a._follow_me_button:hover { background-position: 0 -20px}',
     'a._follow_me_button:active  { background-position: 0 -40px}',
@@ -1163,6 +1171,22 @@
     'a._follow_me_button:hover i { background-position: 100% -20px;  }',
     'a._follow_me_button:active i { background-position: 100% -40px; }',
 
+    // TALL VERSION OF FOLLOW ME ON PINTEREST BUTTON
+
+    // background images (last selector) have no semicolon, so they don't get an !important
+    'a._follow_me_button_tall, a._follow_me_button_tall i { background-size: 400px 84px; background: transparent url(_cdn/images/pidgets/bft_rez.png) 0 0 no-repeat }',
+    'a._follow_me_button_tall { color: #444; display: inline-block; font: bold normal normal 13px/28px "Helvetica Neue",helvetica,arial,san-serif; height: 28px; margin: 0; padding: 0; position: relative; text-decoration: none; text-indent: 33px; vertical-align: baseline;}',
+    'a._follow_me_button_tall:hover { background-position: 0 -28px}',
+    'a._follow_me_button_tall:active  { background-position: 0 -56px}',
+
+    // b = logo
+    'a._follow_me_button_tall b { position: absolute; top: 5px; left: 10px; height: 18px; width: 18px; background-size: 18px 18px; background-image: url(_cdn/images/pidgets/smt_rez.png); }',
+
+    // i = right cap
+    'a._follow_me_button_tall i { position: absolute; top: 0; right: -10px; height: 28px; width: 10px; background-position: 100% 0px; }',
+    'a._follow_me_button_tall:hover i { background-position: 100% -28px;  }',
+    'a._follow_me_button_tall:active i { background-position: 100% -56px; }',
+    
     // EMBEDDED PIN
 
     // main container
