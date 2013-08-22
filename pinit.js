@@ -1,4 +1,4 @@
-// be smarter about fixing misconfigured URLs
+// log blank default descriptions
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -798,10 +798,14 @@
               a.className = a.className + ' ' + $.a.k + '_pin_it_none';
             }
 
-            // validate before trying to pop; if the URL parameters are broken, show the bookmarklet and hope for the best
+            // validate and log on click
             a.onclick = function () {
               // search for url and media in this button's href
-              var q = $.f.parse(this.href, {'url': true, 'media': true});
+              var q = $.f.parse(this.href, {'url': true, 'media': true, 'description': true});
+              // log if no default description was specified
+              if (!q.description) {
+                $.f.log('&type=config_warning&warning_msg=no_description&href=' + encodeURIComponent($.d.URL));
+              }
               // found valid URLs?
               if (q.url && q.url.match(/^http/i) && q.media && q.media.match(/^http/i)) {
                 // yes
@@ -815,6 +819,7 @@
               } else {
                 // log an error with descriptive message
                 $.f.log('&type=config_error&error_msg=invalid_url&href=' + encodeURIComponent($.d.URL));
+                // fire up the bookmarklet and hope for the best
                 $.f.fireBookmark();
               }
               return false;
