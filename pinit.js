@@ -1,4 +1,4 @@
-// log blank default descriptions
+// always append new SCRIPT tags to document.body
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -110,7 +110,13 @@
           }
 
           // make and call the new script node
-          $.d.b.appendChild($.f.make({'SCRIPT': {'id': id, 'type': 'text/javascript', 'charset': 'utf-8', 'src': url + sep + 'callback=' + id}}));
+          $.d.b.appendChild( $.f.make({'SCRIPT': {
+              'id': id,
+              'type': 'text/javascript',
+              'charset': 'utf-8',
+              'src': url + sep + 'callback=' + id
+            }
+          }));
         },
 
         // console.log only if debug is on
@@ -379,13 +385,13 @@
 
         // fire the bookmarklet
         fireBookmark: function () {
-          $.v.firstScript.parentNode.insertBefore($.f.make({
+          $.d.b.appendChild($.f.make({
             'SCRIPT': {
               'type': 'text/javascript',
               'charset': 'utf-8',
               'src': $.a.endpoint.bookmark + '?r=' + Math.random() * 99999999
             }
-          }), $.v.firstScript);
+          }));
         },
 
         // callbacks
@@ -921,7 +927,6 @@
         config: function () {
           // find and apply configuration requests passed as data attributes on SCRIPT tag
           var script = $.d.getElementsByTagName('SCRIPT'), n = script.length, i, j, foundMe = false;
-          $.v.firstScript = script[0];
 
           for (i = 0; i < n; i = i + 1) {
             if ($.a.me && script[i] && script[i].src && script[i].src.match($.a.me)) {
@@ -935,11 +940,7 @@
               $.f.kill(script[i]);
             }
           }
-          if (n === 1) {
-            // whoops, our script was the only one on the page. Make an empty to insert new nodes before.
-            $.v.firstScript = $.f.make({'SCRIPT': {}});
-            $.d.b.appendChild($.v.firstScript);
-          }
+
           if (typeof $.v.config.build === 'string') {
             $.w[$.v.config.build] = function (el) {
               $.f.build(el);
