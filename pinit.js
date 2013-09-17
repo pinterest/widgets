@@ -1,4 +1,4 @@
-// always append new SCRIPT tags to document.body
+// accept both new (www.pinterest.com) and  old (pinterest.com) links
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -173,7 +173,9 @@
         },
 
         hideFloatingButton: function () {
-          $.s.floatingButton.style.display = 'none';
+          if ($.s.floatingButton) {
+            $.s.floatingButton.style.display = 'none';
+          }
         },
 
         getThis: function (widget, id) {
@@ -194,7 +196,7 @@
             // get position, start href
             var p = $.f.getPos(img), href = $.a.endpoint.create;
             // set the button href
-            href = href + 'url=' + encodeURIComponent($.d.URL) + '&media=' + encodeURIComponent(img.src) + '&guid=' + $.v.guid + '&description=' + encodeURIComponent(img.getAttribute('data-pin-description') || img.title || img.alt || $.d.title);
+            href = href + 'url=' + encodeURIComponent($.d.URL) + '&media=' + encodeURIComponent(img.src) + '&description=' + encodeURIComponent(img.getAttribute('data-pin-description') || img.title || img.alt || $.d.title);
             $.s.floatingButton.href = href;
             // pop new window and hide on click
             $.s.floatingButton.onclick = function () {
@@ -456,11 +458,11 @@
                 }
 
                 // main image
-                var link = $.f.make({'A': { 'className': $.a.k + '_embed_pin_link', 'title': pin.description, 'href': 'http://pinterest.com/pin/' + pin.id + '/', 'target': '_blank'}});
+                var link = $.f.make({'A': { 'className': $.a.k + '_embed_pin_link', 'title': pin.description, 'href': 'http://www.pinterest.com/pin/' + pin.id + '/', 'target': '_blank'}});
 
                 var img = $.f.make({'IMG': {'className': $.a.k + '_embed_pin_link_img', 'alt': pin.description, 'nopin': 'true', 'src': thumb.url, 'width': thumb.width, 'height': thumb.height}});
                 $.f.set(img, $.a.dataAttributePrefix + 'log', 'image_from_embedded_pin');
-                $.f.set(img, $.a.dataAttributePrefix + 'href', 'http://pinterest.com/pin/' + pin.id + '/');
+                $.f.set(img, $.a.dataAttributePrefix + 'href', 'http://www.pinterest.com/pin/' + pin.id + '/');
                 img.style.width = thumb.width + 'px';
                 img.style.height = thumb.height + 'px';
                 link.appendChild(img);
@@ -544,7 +546,7 @@
 
                   // future-proof against API weirdness: sometimes absolute paths are not really absolute
                   if (!pin.board.url.match(/^(\/\/pinterest\.com|http:\/\/pinterest\.com|https:\/\/pinterest\.com)/)) {
-                    pin.board.url = '//pinterest.com' + pin.board.url;
+                    pin.board.url = '//www.pinterest.com' + pin.board.url;
                     $.f.debug('appending Pinterest prefix to board URL');
                   }
 
@@ -788,10 +790,13 @@
               $.f.debug('no url found; click will pin this page');
             }
 
+            // automatically fill in document.title (if avaiable) for blank descriptions
             if (!q.description) {
-              q.description = '';
+              q.description = encodeURIComponent($.d.title || '');
             }
-            href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&guid=' + $.v.guid + '&description=' + q.description;
+
+            href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&guid=' + $.v.guid + '-' + $.v.buttonId + '&description=' + q.description;
+            $.v.buttonId = $.v.buttonId + 1;
 
             var a = $.f.make({'A': {'href': href, 'className': $.a.k + '_pin_it_button ' + $.a.k + '_pin_it_button_inline', 'target': '_blank'}});
             $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_pinit');
@@ -977,6 +982,7 @@
             'config': {},
             'strings': $.a.strings.en,
             'guid': '',
+            'buttonId': 0,
             'deepBrowser': null
           };
 
@@ -1030,7 +1036,7 @@
   $.f.init();
 }(window, document, {
   'k': 'PIN_' + new Date().getTime(),
-  'myDomain': /^https?:\/\/pinterest\.com\//,
+  'myDomain': /^https?:\/\/(www\.|)pinterest\.com\//,
   'me': /pinit.*?\.js$/,
   'floatingButtonOffsetTop': 10,
   'floatingButtonOffsetLeft': 10,
@@ -1044,7 +1050,7 @@
     'board': '//widgets.pinterest.com/v3/pidgets/boards/',
     'user': '//widgets.pinterest.com/v3/pidgets/users/',
     'log': '//log.pinterest.com/',
-    'create': '//pinterest.com/pin/create/button/?'
+    'create': '//www.pinterest.com/pin/create/button/?'
   },
   'config': {
     'pinItCountPosition': {
