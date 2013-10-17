@@ -1,4 +1,4 @@
-// accept both new (www.pinterest.com) and  old (pinterest.com) links
+// drop minImgSize to 199 so 200px images show hoverbuttons
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -953,12 +953,21 @@
           }
 
           $.w.setTimeout(function () {
-            $.f.log('&type=pidget');
+            if (typeof $.v.config.logc === 'string') {
+              $.f.log('&type=pidget&logc=' + $.v.config.logc, $.a.endpoint.logc);
+            } else {
+              $.f.log('&type=pidget');
+            }
           }, 1000);
 
         },
         // send logging information
-        log: function (str) {
+        log: function (str, endpoint) {
+
+            if (!endpoint) {
+              endpoint = $.a.endpoint.log;
+            }
+
             // create the logging call
             var query = '?via=' + encodeURIComponent($.v.here) + '&guid=' + $.v.guid;
 
@@ -967,7 +976,7 @@
               query = query + str;
             }
 
-            $.f.call($.a.endpoint.log + query, $.f.ping.log);
+            $.f.call(endpoint + query, $.f.ping.log);
         },
 
         init : function () {
@@ -1050,6 +1059,7 @@
     'board': '//widgets.pinterest.com/v3/pidgets/boards/',
     'user': '//widgets.pinterest.com/v3/pidgets/users/',
     'log': '//log.pinterest.com/',
+    'logc': '//logc.pinterest.com/',
     'create': '//www.pinterest.com/pin/create/button/?'
   },
   'config': {
@@ -1059,12 +1069,12 @@
       'beside': true
     }
   },
-  'minImgSize': 200,
+  'minImgSize': 199,
   // source 6 means "pinned with the externally-hosted Pin It button"
   'countSource': 6,
   'dataAttributePrefix': 'data-pin-',
   // valid config parameters
-  'configParam': [ 'build', 'debug', 'style', 'hover'],
+  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc'],
   // configuration for the pop-up window
   'pop': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=632,height=270,left=0,top=0',
   'popLarge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=900,height=500,left=0,top=0',
