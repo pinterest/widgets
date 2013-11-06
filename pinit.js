@@ -1,4 +1,4 @@
-// drop minImgSize to 199 so 200px images show hoverbuttons
+// updated header for grid widgets; scroll grid body for some browsers
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -131,7 +131,10 @@
           var css, cdn, rules;
 
           css = $.f.make({'STYLE': {'type': 'text/css'}});
-          cdn = $.a.cdn[$.w.location.protocol] || $.a.cdn['http:'];
+
+          // suspenders AND belt; if some weird protocol sneaks through, default to http
+          cdn = $.a.cdn[$.v.protocol] || $.a.cdn['http:'];
+
           rules = $.a.rules.join('\n');
 
           // each rule has our randomly-created key at its root to minimize style collisions
@@ -302,9 +305,21 @@
           }
           return n;
         },
+        
+        // make an avatar for board header
+        avatar: function (url, href) {
+          var src = url.replace(/_30.jpg/, '_60.jpg');
+          var span = $.f.make({'A': {'className': $.a.k + '_avatar', 'href': href}});
+          var img = $.f.make({'IMG': {'src': src }});
+          span.appendChild(img);
+          return span;
+        },
 
         // arrange pin images neatly on a board
-        tile: function (parent, data) {
+        grid: function (parent, data, log) {
+          if (!log) {
+            log = 'embed_board';
+          }
           parent.style.display = 'block';
           var scaleFactors = {
             'height': $.a.tile.scale.height,
@@ -329,20 +344,20 @@
           if (columns < $.a.tile.minColumns) {
             return false;
           }
-          var bd = $.f.make({'SPAN': {'className': $.a.k + '_embed_board_bd'}});
+          var bd = $.f.make({'SPAN': {'className': $.a.k + '_embed_grid_bd'}});
           bd.style.height = scaleFactors.height + 'px';
           $.v.renderedWidth = (columns * (scaleFactors.width + $.a.tile.style.margin)) - $.a.tile.style.margin;
           bd.style.width =  $.v.renderedWidth + 'px';
           var c = 0;
           var h = [];
           for (var i = 0, n = data.length; i < n; i = i + 1) {
-            var thumb = $.f.make({'A': {'className': $.a.k + '_embed_board_th', 'target': '_blank', 'href': parent.href, 'title': data[i].description}});
-            $.f.set(thumb, $.a.dataAttributePrefix + 'log', 'embed_board');
+            var thumb = $.f.make({'A': {'className': $.a.k + '_embed_grid_th', 'target': '_blank', 'href': parent.href, 'title': data[i].description}});
+            $.f.set(thumb, $.a.dataAttributePrefix + 'log', log);
             var scale = {
               'height': data[i].images['237x'].height * (scaleFactors.width / data[i].images['237x'].width),
               'width': scaleFactors.width
             };
-            var img = $.f.make({'IMG': {'src': data[i].images['237x'].url, 'nopin': 'true', 'height': scale.height, 'width': scale.width, 'className': $.a.k + '_embed_board_img', 'alt': data[i].description}});
+            var img = $.f.make({'IMG': {'src': data[i].images['237x'].url, 'nopin': 'true', 'height': scale.height, 'width': scale.width, 'className': $.a.k + '_embed_grid_img', 'alt': data[i].description}});
             img.style.height = scale.height + 'px';
             img.style.width = scale.width + 'px';
             img.style.marginTop = 0 - (scale.height / $.a.tile.style.margin) + 'px';
@@ -362,17 +377,48 @@
             bd.appendChild(thumb);
             c = (c + 1) % columns;
           }
+          if ($.v.userAgent.match(/Mac OS X/)) {
+            bd.className = bd.className + ' ' + $.a.k + '_embed_grid_scrolling_okay';
+          }
           return bd;
+        },
+        
+        // make a board header - takes data, parent element, string to log, and true/false for showing board 
+        makeHeader: function (r, parent, log, showSecond) {
+          var hd = $.f.make({'SPAN': { 'className': $.a.k + '_embed_grid_hd'}});
+          var avatar = $.f.avatar(r.data.user.image_small_url, parent.href);
+          $.f.set(avatar, $.a.dataAttributePrefix + 'log', log);
+          hd.appendChild(avatar);
+
+          if (showSecond) {
+            // showing first and second lines
+            var first = $.f.make({'A': {'className': $.a.k + '_embed_grid_first', 'innerHTML': $.f.filter(r.data.user.full_name), 'target': '_blank', 'href': parent.href }});
+            first.style.width = ($.v.renderedWidth) - 45 + 'px';
+            $.f.set(first, $.a.dataAttributePrefix + 'log', log);
+            hd.appendChild(first);   
+            var second = $.f.make({'A': {'className': $.a.k + '_embed_grid_second', 'innerHTML':  $.f.filter(r.data.board.name), 'target': '_blank', 'href': parent.href}});
+            second.style.width = ($.v.renderedWidth) - 45 + 'px';
+            $.f.set(second, $.a.dataAttributePrefix + 'log', log);
+            hd.appendChild(second);
+          } else {
+            // only showing one line; center it vertically
+            var mid = $.f.make({'A': {'className': $.a.k + '_embed_grid_mid', 'innerHTML': $.f.filter(r.data.user.full_name), 'target': '_blank', 'href': parent.href }});
+            mid.style.width = ($.v.renderedWidth) - 45 + 'px';
+            $.f.set(mid, $.a.dataAttributePrefix + 'log', log);
+            hd.appendChild(mid);               
+          }
+
+          return hd;   
         },
 
         // make a board footer
         makeFooter: function (a, type) {
-          var ft = $.f.make({'A': { 'className': $.a.k + '_embed_board_ft', 'href': a.href, 'target': '_blank'}});
+          var ft = $.f.make({'A': { 'className': $.a.k + '_embed_grid_ft', 'href': a.href, 'target': '_blank'}});
           if ($.v.renderedWidth > $.a.tile.minWidthToShowAuxText) {
             ft.innerHTML = $.v.strings.seeOn;
           }
           $.f.set(ft, $.a.dataAttributePrefix + 'log', type);
-          var logo = $.f.make({'SPAN': { 'className': $.a.k + '_embed_board_ft_logo'}});
+          var logo = $.f.make({'SPAN': { 'className': $.a.k + '_embed_grid_ft_logo'}});
           ft.appendChild(logo);
           return ft;
         },
@@ -399,9 +445,7 @@
         // callbacks
         ping: {
           log: function (r, k) {
-            // varnish should not return a callback for log.
-            // if this changes, this callback needs to be here
-            // to drop it on the floor
+            // drop logging callbacks on the floor
           },
           count: function (r, k) {
             var container = $.d.getElementById($.a.k + '_pin_count_' + k);
@@ -546,7 +590,7 @@
 
                   // future-proof against API weirdness: sometimes absolute paths are not really absolute
                   if (!pin.board.url.match(/^(\/\/pinterest\.com|http:\/\/pinterest\.com|https:\/\/pinterest\.com)/)) {
-                    pin.board.url = '//www.pinterest.com' + pin.board.url;
+                    pin.board.url = $.v.protocol + '//www.pinterest.com' + pin.board.url;
                     $.f.debug('appending Pinterest prefix to board URL');
                   }
 
@@ -582,26 +626,21 @@
             var parent = $.d.getElementById($.a.k + '_' + k);
             if (parent && r.data && r.data.pins && r.data.pins.length) {
               $.f.debug('API replied with a user');
-              var container = $.f.make({'SPAN': { 'className': $.a.k + '_embed_board'}});
+              var container = $.f.make({'SPAN': { 'className': $.a.k + '_embed_grid'}});
               var style = $.f.getData(parent, 'style');
               if (style !== 'plain') {
                 container.className = container.className + ' ' + $.a.k + '_fancy';
               }
-              var hd = $.f.make({'SPAN': { 'className': $.a.k + '_embed_board_hd'}});
-              var title = $.f.make({'A': {'className': $.a.k + '_embed_board_title', 'innerHTML': $.f.filter(r.data.user.full_name), 'target': '_blank', 'href': parent.href}});
-              $.f.set(title, $.a.dataAttributePrefix + 'log', 'embed_user');
-
-              hd.appendChild(title);
-              container.appendChild(hd);
-              var bd = $.f.tile(parent, r.data.pins);
+              var bd = $.f.grid(parent, r.data.pins, 'embed_user');
               if (bd) {
+                var hd = $.f.makeHeader(r, parent, 'embed_user');
+                container.appendChild(hd);
                 container.appendChild(bd);
-                // add trailing slash here if we need it
-                parent.href = parent.href + 'pins/';
                 container.appendChild($.f.makeFooter(parent, 'embed_user'));
                 $.f.cssHook(parent, container);
                 $.f.replace(parent, container);
               }
+
             }
           },
 
@@ -610,27 +649,15 @@
             var parent = $.d.getElementById($.a.k + '_' + k);
             if (parent && r.data && r.data.pins && r.data.pins.length) {
               $.f.debug('API replied with a group of pins');
-              var container = $.f.make({'SPAN': { 'className': $.a.k + '_embed_board'}});
+              var container = $.f.make({'SPAN': { 'className': $.a.k + '_embed_grid'}});
               var style = $.f.getData(parent, 'style');
               if (style !== 'plain') {
                 container.className = container.className + ' ' + $.a.k + '_fancy';
               }
-              // need to know width before making header
-              var bd = $.f.tile(parent, r.data.pins);
-              var hd = $.f.make({'SPAN': { 'className': $.a.k + '_embed_board_hd'}});
-              var title = $.f.make({'A': { 'className': $.a.k + '_embed_board_name', 'innerHTML': $.f.filter(r.data.board.name), 'target': '_blank', 'href': parent.href}});
-              $.f.set(title, $.a.dataAttributePrefix + 'log', 'embed_board');
-              hd.appendChild(title);
-              if ($.v.renderedWidth > $.a.tile.minWidthToShowAuxText) {
-                var author = $.f.make({'A': { 'log': 'embed_board', 'className': $.a.k + '_embed_board_author', 'innerHTML': '<span>' + $.v.strings.attribTo + '</span> ' + $.f.filter(r.data.user.full_name), 'target': '_blank', 'href': parent.href}});
-                $.f.set(author, $.a.dataAttributePrefix + 'log', 'embed_board');
-                hd.appendChild(author);
-              } else {
-                // center it
-                title.className = $.a.k + '_embed_board_title';
-              }
-              container.appendChild(hd);
+              var bd = $.f.grid(parent, r.data.pins, 'embed_board');
               if (bd) {
+                var hd = $.f.makeHeader(r, parent, 'embed_board', true);
+                container.appendChild(hd);
                 container.appendChild(bd);
                 container.appendChild($.f.makeFooter(parent, 'embed_board'));
                 $.f.cssHook(parent, container);
@@ -820,8 +847,8 @@
               // found valid URLs?
               if (q.url && q.url.match(/^http/i) && q.media && q.media.match(/^http/i)) {
                 // yes
-                if (typeof $.f.deepLink[$.v.deepBrowser] === 'function') {
-                  // deep link
+                if (!$.v.config.shallow && typeof $.f.deepLink[$.v.deepBrowser] === 'function') {
+                  // attempt to deep link
                   $.f.deepLink[$.v.deepBrowser](this);
                 } else {
                   // pop the pin form
@@ -992,13 +1019,28 @@
             'strings': $.a.strings.en,
             'guid': '',
             'buttonId': 0,
-            'deepBrowser': null
+            'deepBrowser': null,
+            'protocol': $.w.location.protocol,
+            'userAgent': $.w.navigator.userAgent
           };
 
+          // are we testing by dragging a file into a browser?
+          if ($.v.protocol === 'file:') {
+            $.v.protocol = 'http:';
+          }
+
+          // prepend protocol to endpoints so testing from file:// works
+          for (var e in $.a.endpoint) {
+            // one endpoint already takes http:, so don't override
+            if (!$.a.endpoint[e].match(/^h/)) {
+              $.a.endpoint[e] = $.v.protocol + $.a.endpoint[e];
+            }
+          }
+
           // are we using an IOS device?
-          if ($.w.navigator.userAgent.match(/iP/) !== null) {
+          if ($.v.userAgent.match(/iP/) !== null) {
             // we're on an IOS device. Don't deep link from inside the Pinterest app or Chrome.
-            if ($.w.navigator.userAgent.match(/Pinterest/) === null && $.w.navigator.userAgent.match(/CriOS/) === null) {
+            if ($.v.userAgent.match(/Pinterest/) === null && $.v.userAgent.match(/CriOS/) === null) {
               $.v.deepBrowser = 'ios_safari';
             }
           }
@@ -1074,14 +1116,16 @@
   'countSource': 6,
   'dataAttributePrefix': 'data-pin-',
   // valid config parameters
-  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc'],
+  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc', 'shallow'],
   // configuration for the pop-up window
   'pop': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=632,height=270,left=0,top=0',
   'popLarge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=900,height=500,left=0,top=0',
   // secure and non-secure content distribution networks
   'cdn': {
     'https:': 'https://s-passets.pinimg.com',
-    'http:': 'http://passets.pinterest.com'
+    'http:': 'http://passets.pinterest.com',
+    // if we are dragging and dropping to test a page, use http instead of file
+    'file:': 'http://passets.pinterest.com'
   },
   // tiled image settings
   'tile': {
@@ -1258,35 +1302,44 @@
     // EMBEDDED BOARDS
 
     // main container
-    'span._embed_board { display: inline-block; margin: 0; padding:10px 0; position: relative; text-align: center}',
+    'span._embed_grid { display: inline-block; margin: 0; padding:10px 0; position: relative; text-align: center}',
     // border and corners
-    'span._embed_board._fancy { background: #fff; box-shadow: 0 0 3px #aaa; border-radius: 3px; }',
+    'span._embed_grid._fancy { background: #fff; box-shadow: 0 0 3px #aaa; border-radius: 3px; }',
     // header container
-    'span._embed_board span._embed_board_hd { display: block; margin: 0 10px; padding: 0; line-height: 20px; height: 25px; position: relative;  }',
-    // title and author
-    'span._embed_board span._embed_board_hd a { cursor: pointer; background: inherit; text-decoration: none; width: 48%; white-space: nowrap; position: absolute; top: 0; overflow: hidden;  text-overflow: ellipsis; }',
-    'span._embed_board span._embed_board_hd a:hover { text-decoration: none; background: inherit; }',
-    'span._embed_board span._embed_board_hd a:active { text-decoration: none; background: inherit; }',
-    // centered title
-    'span._embed_board span._embed_board_hd a._embed_board_title { width: 100%; position: absolute; left: 0; text-align: left; font-family: Georgia; font-size: 16px; color:#2b1e1e;}',
-    // title
-    'span._embed_board span._embed_board_hd a._embed_board_name { position: absolute; left: 0; text-align: left; font-family: Georgia; font-size: 16px; color:#2b1e1e;}',
-    // author
-    'span._embed_board span._embed_board_hd a._embed_board_author { position: absolute; right: 0; text-align: right; font-family: Helvetica; font-size: 11px; color: #746d6a; font-weight: bold;}',
-    'span._embed_board span._embed_board_hd a._embed_board_author span { font-weight: normal; }',
-    // image container
-    'span._embed_board span._embed_board_bd { display:block; margin: 0 10px; overflow: hidden; border-radius: 2px; position: relative; }',
+    'span._embed_grid span._embed_grid_hd { display: block; margin: 0 10px; padding: 0; height: 45px; position: relative; background: #fff}',
+
+    // avatar 
+    'span._embed_grid span._embed_grid_hd a._avatar { position: absolute; top: 0; left: 0; height: 36px; width: 36px; }',
+    'span._embed_grid span._embed_grid_hd a._avatar::before { position: absolute; content:""; z-index: 2; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 2px #888;  border-radius: 3px; }',
+    'span._embed_grid span._embed_grid_hd a._avatar img { position: relative; height: 36px; width: 36px; border-radius: 3px; border: none;}',
+
+    // header
+    'span._embed_grid span._embed_grid_hd a { text-decoration: none; background: transparent; cursor: pointer; white-space: nowrap; position: absolute; left: 44px; text-align: left; overflow: hidden; text-overflow: ellipsis; }',
+    'span._embed_grid span._embed_grid_hd a:hover { text-decoration: none; background: #fff; }',
+    'span._embed_grid span._embed_grid_hd a:active { text-decoration: none; background: #fff; }',
+    // top line
+    'span._embed_grid span._embed_grid_hd a._embed_grid_first { top: 2px; font-family: helvetica, sans-serif; font-weight: bold; color:#333; font-size: 14px; line-height: 14px; }',
+    // second line
+    'span._embed_grid span._embed_grid_hd a._embed_grid_second { bottom: 11px; font-family: helvetica, sans-serif; color:#8e8e8e; font-size: 12px; line-height: 12px; }',
+    // mid line
+    'span._embed_grid span._embed_grid_hd a._embed_grid_mid { top: 12px; font-family: helvetica, sans-serif; font-weight: bold; color:#333; font-size: 14px; line-height: 14px; }',
+
+    // grid container - note final selector for oveflow:hidden won't have an !important, so we can override
+    'span._embed_grid span._embed_grid_bd { display:block; margin: 0 10px; border-radius: 2px; position: relative; overflow: hidden }',
+    // set me if we're on an OS that doesn't supply scrollbars
+    'span._embed_grid span._embed_grid_scrolling_okay { overflow: auto; }',
+
     // each thumbnail
-    'span._embed_board span._embed_board_bd a._embed_board_th { cursor: pointer; display: inline-block; position: absolute; overflow: hidden; }',
+    'span._embed_grid span._embed_grid_bd a._embed_grid_th { cursor: pointer; display: inline-block; position: absolute; overflow: hidden; }',
     // inset shadow mask
-    'span._embed_board span._embed_board_bd a._embed_board_th::before { position: absolute; content:""; z-index: 2; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 2px #888; }',
+    'span._embed_grid span._embed_grid_bd a._embed_grid_th::before { position: absolute; content:""; z-index: 2; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 2px #888; }',
     // thumbnail image
-    'span._embed_board span._embed_board_bd a._embed_board_th img._embed_board_img { border: none; position: absolute; top: 50%; left: 0; }',
+    'span._embed_grid span._embed_grid_bd a._embed_grid_th img._embed_grid_img { border: none; position: absolute; top: 50%; left: 0; }',
     // footer button
-    'a._embed_board_ft { text-shadow: 0 1px #fff; display: block; text-align: center; border: 1px solid #ccc; margin: 10px 10px 0; height: 31px; line-height: 30px;border-radius: 2px; text-decoration: none; font-family: Helvetica; font-weight: bold; font-size: 13px; color: #746d6a; background: #f4f4f4 url(_cdn/images/pidgets/board_button_link.png) 0 0 repeat-x}',
-    'a._embed_board_ft:hover { text-decoration: none; background: #fefefe url(_cdn/images/pidgets/board_button_hover.png) 0 0 repeat-x}',
-    'a._embed_board_ft:active { text-decoration: none; background: #e4e4e4 url(_cdn/images/pidgets/board_button_active.png) 0 0 repeat-x}',
-    'a._embed_board_ft span._embed_board_ft_logo { vertical-align: top; display: inline-block; margin-left: 2px; height: 30px; width: 66px; background: transparent url(_cdn/images/pidgets/board_button_logo.png) 50% 48% no-repeat; }',
+    'a._embed_grid_ft { text-shadow: 0 1px #fff; display: block; text-align: center; border: 1px solid #ccc; margin: 10px 10px 0; height: 31px; line-height: 30px;border-radius: 2px; text-decoration: none; font-family: Helvetica; font-weight: bold; font-size: 13px; color: #746d6a; background: #f4f4f4 url(_cdn/images/pidgets/board_button_link.png) 0 0 repeat-x}',
+    'a._embed_grid_ft:hover { text-decoration: none; background: #fefefe url(_cdn/images/pidgets/board_button_hover.png) 0 0 repeat-x}',
+    'a._embed_grid_ft:active { text-decoration: none; background: #e4e4e4 url(_cdn/images/pidgets/board_button_active.png) 0 0 repeat-x}',
+    'a._embed_grid_ft span._embed_grid_ft_logo { vertical-align: top; display: inline-block; margin-left: 2px; height: 30px; width: 66px; background: transparent url(_cdn/images/pidgets/board_button_logo.png) 50% 48% no-repeat; }',
 
     // leave this at the bottom, to avoid trailing commas
     '._hidden { display:none; }'
