@@ -1,4 +1,4 @@
-// add Japanese, plus new language, color, and size options for Pin It button
+// link pin thumbs to repin dialog for grid widgets
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -261,9 +261,10 @@
         // a click!
         click: function (v) {
           v = v || $.w.event;
-          var el, log;
+          var el, log, pinId;
           el = $.f.getEl(v);
           if (el) {
+
             // log this click
             log = $.f.getData(el, 'log');
             if (log) {
@@ -272,6 +273,12 @@
               if (!el.className.match(/hazClick/)) {
                 el.className = el.className + ' ' + $.a.k + '_hazClick';
               }
+            }
+
+            // pop repin dialogue
+            pinId = $.f.getData(el, 'pin-id');
+            if (pinId) {
+              $.w.open($.a.endpoint.repin.replace(/%s/, pinId), 'pin' + new Date().getTime(), $.a.pop);
             }
           }
         },
@@ -361,7 +368,9 @@
           var c = 0;
           var h = [];
           for (var i = 0, n = data.length; i < n; i = i + 1) {
-            var thumb = $.f.make({'A': {'className': $.a.k + '_embed_grid_th', 'target': '_blank', 'href': parent.href, 'title': data[i].description}});
+            var thumb = $.f.make({'A': {'className': $.a.k + '_embed_grid_th', 'title': data[i].description}});
+
+            $.f.set(thumb, $.a.dataAttributePrefix + 'pin-id', data[i].id);
             $.f.set(thumb, $.a.dataAttributePrefix + 'log', log);
             var scale = {
               'height': data[i].images['237x'].height * (scaleFactors.width / data[i].images['237x'].width),
@@ -1196,7 +1205,8 @@
     'user': '//widgets.pinterest.com/v3/pidgets/users/',
     'log': '//log.pinterest.com/',
     'logc': '//logc.pinterest.com/',
-    'create': '//www.pinterest.com/pin/create/button/?'
+    'create': '//www.pinterest.com/pin/create/button/?',
+    'pin_closeup': '//www.pinterest.com/pin/'
   },
   'config': {
     'pinItCountPosition': {
