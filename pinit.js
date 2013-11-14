@@ -1,4 +1,4 @@
-// updated header for grid widgets; scroll grid body for some browsers
+// add Japanese, plus new language, color, and size options for Pin It button
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -143,10 +143,10 @@
           // every rule ending in ; also gets !important
           rules = rules.replace(/;/g, '!important;');
 
-          // pick the right content distribution network
+          // cdn
           rules = rules.replace(/_cdn/g, cdn);
-
-          // pick the right resolution
+          
+          // resolution
           rules = rules.replace(/_rez/g, $.v.resolution);
 
           // add rules to stylesheet
@@ -188,14 +188,24 @@
         },
 
         showFloatingButton: function (img) {
+        
+          var height = $.f.getData(img, 'height') || $.v.config.height;
+          var color = $.f.getData(img, 'color') || $.v.config.color;
+          var lang = $.f.getData(img, 'lang') || $.v.config.localImage;
+        
           // size > 80x80 and source is not a data: uri?
           if (img.height > $.a.minImgSize && img.width > $.a.minImgSize && !img.src.match(/^data/)) {
-            // do this only once
-            if (!$.s.floatingButton) {
-              $.s.floatingButton = $.f.make({'A': {'className': $.a.k + '_pin_it_button ' + $.a.k + '_pin_it_button_floating', 'title': 'Pin it!', 'target': '_blank'}});
-              $.f.set($.s.floatingButton, $.a.dataAttributePrefix + 'log', 'button_pinit_floating');
-              $.d.b.appendChild($.s.floatingButton);
+            
+            // kill it if it's already floating out there
+            if ($.s.floatingButton) {
+              $.f.kill($.s.floatingButton);
             }
+            
+            // make it fresh each time; this pays attention to individual image config options
+            $.s.floatingButton = $.f.make({'A': {'className': $.a.k + '_pin_it_button_' + height + ' ' + $.a.k + '_pin_it_button_' + lang + '_' + height + '_' + color + ' ' + $.a.k + '_pin_it_button_floating_' + height, 'title': 'Pin it!', 'target': '_blank'}});
+            $.f.set($.s.floatingButton, $.a.dataAttributePrefix + 'log', 'button_pinit_floating');
+            $.d.b.appendChild($.s.floatingButton);
+
             // get position, start href
             var p = $.f.getPos(img), href = $.a.endpoint.create;
             // set the button href
@@ -412,15 +422,34 @@
         },
 
         // make a board footer
-        makeFooter: function (a, type) {
-          var ft = $.f.make({'A': { 'className': $.a.k + '_embed_grid_ft', 'href': a.href, 'target': '_blank'}});
-          if ($.v.renderedWidth > $.a.tile.minWidthToShowAuxText) {
-            ft.innerHTML = $.v.strings.seeOn;
+        makeFooter: function (a, type, lang) {
+          var ft, logo, see;
+          
+          ft = $.f.make({'A': { 'className': $.a.k + '_embed_grid_ft', 'href': a.href, 'target': '_blank'}});
+          
+          logo = $.f.make({'SPAN': { 'className': $.a.k + '_embed_grid_ft_logo'}});
+
+          var strings = $.v.strings;
+          if (lang && $.a.strings[lang]) {
+            strings = $.a.strings[lang];
           }
+  
+          if ($.v.renderedWidth > $.a.tile.minWidthToShowAuxText) {
+            see = $.f.make({'SPAN':{'innerHTML': strings.seeOn }});
+            if (strings.seeOnTextAfterLogo) {
+              ft.appendChild(logo);
+              ft.appendChild(see);
+            } else {
+              ft.appendChild(see);
+              ft.appendChild(logo);
+            }
+          } else {
+            ft.appendChild(logo);
+          }
+
           $.f.set(ft, $.a.dataAttributePrefix + 'log', type);
-          var logo = $.f.make({'SPAN': { 'className': $.a.k + '_embed_grid_ft_logo'}});
-          ft.appendChild(logo);
           return ft;
+
         },
 
         // add a CSS class to the container if specified
@@ -493,7 +522,16 @@
 
               if (pin && pin.id && pin.description && thumb.url && thumb.width && thumb.height) {
                 $.f.debug('Found enough data to embed a pin');
-
+                
+                var strings = $.v.strings;
+                
+                // overridden language?
+                var lang = $.f.getData(parent, 'lang') || $.v.config.lang;
+                
+                if ($.a.strings[lang]) {
+                  strings = $.a.strings[lang];
+                }
+                
                 // container
                 var container = $.f.make({'SPAN': { 'className': $.a.k + '_embed_pin', 'data-pin-id': pin.id }});
                 var style = $.f.getData(parent, 'style');
@@ -512,7 +550,14 @@
                 link.appendChild(img);
 
                 // pin it button
-                var repin = $.f.make({'I': {'className': $.a.k + '_repin', 'data-pin-id': pin.id }});
+                var rpc = $.a.k + '_repin';
+                
+                // gross hack
+                if (lang === 'ja') {
+                  rpc = rpc + '_ja';
+                }
+                
+                var repin = $.f.make({'I': {'className': rpc, 'data-pin-id': pin.id }});
                 $.f.set(repin, $.a.dataAttributePrefix + 'log', 'repin');
                 $.f.set(repin, $.a.dataAttributePrefix + 'href', $.a.endpoint.repin.replace(/%s/, pin.id));
 
@@ -527,7 +572,7 @@
                 };
 
                 // this button should open the widget builder with this pin in preview
-                var getThis = $.f.make({'I': {'className': $.a.k + '_getThis', 'innerHTML': $.v.strings.getThis + '<i></i>', 'data-pin-id': pin.id}});
+                var getThis = $.f.make({'I': {'className': $.a.k + '_getThis', 'innerHTML': strings.getThis + '<i></i>', 'data-pin-id': pin.id}});
                 link.appendChild(getThis);
                 getThis.onclick = function () {
                   var pinId = $.f.get(this, 'data-pin-id');
@@ -555,7 +600,7 @@
                       'src': pin.attribution.provider_icon_url
                     }
                   }));
-                  attribution.appendChild($.f.make({'SPAN':{'className': $.a.k + '_embed_pin_attrib',  'innerHTML': $.v.strings.attribTo + ' <a href="' + pin.attribution.url + '" target="_blank">' + $.f.filter(pin.attribution.author_name) + '</a>'}}));
+                  attribution.appendChild($.f.make({'SPAN':{'className': $.a.k + '_embed_pin_attrib',  'innerHTML': strings.attribTo + ' <a href="' + pin.attribution.url + '" target="_blank">' + $.f.filter(pin.attribution.author_name) + '</a>'}}));
                   description.appendChild(attribution);
                 }
                 container.appendChild(description);
@@ -573,7 +618,7 @@
                     }
                   }));
                   pinner.appendChild($.f.make({
-                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.pinnedBy + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.pinner.full_name) + '</em>'}
+                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': strings.pinnedBy + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.pinner.full_name) + '</em>'}
                   }));
 
                   var pinnerShield = $.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}});
@@ -602,7 +647,7 @@
                     }
                   }));
                   board.appendChild($.f.make({
-                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': $.v.strings.onto + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.board.name) + '</em>'}
+                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': strings.onto + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.board.name) + '</em>'}
                   }));
 
                   var boardShield = $.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}});
@@ -625,6 +670,9 @@
           user: function (r, k) {
             var parent = $.d.getElementById($.a.k + '_' + k);
             if (parent && r.data && r.data.pins && r.data.pins.length) {
+
+              var lang = $.f.getData(parent, 'lang') || $.v.config.lang;
+              
               $.f.debug('API replied with a user');
               var container = $.f.make({'SPAN': { 'className': $.a.k + '_embed_grid'}});
               var style = $.f.getData(parent, 'style');
@@ -636,7 +684,7 @@
                 var hd = $.f.makeHeader(r, parent, 'embed_user');
                 container.appendChild(hd);
                 container.appendChild(bd);
-                container.appendChild($.f.makeFooter(parent, 'embed_user'));
+                container.appendChild($.f.makeFooter(parent, 'embed_user', lang));
                 $.f.cssHook(parent, container);
                 $.f.replace(parent, container);
               }
@@ -649,6 +697,9 @@
             var parent = $.d.getElementById($.a.k + '_' + k);
             if (parent && r.data && r.data.pins && r.data.pins.length) {
               $.f.debug('API replied with a group of pins');
+
+              var lang = $.f.getData(parent, 'lang') || $.v.config.lang;
+
               var container = $.f.make({'SPAN': { 'className': $.a.k + '_embed_grid'}});
               var style = $.f.getData(parent, 'style');
               if (style !== 'plain') {
@@ -659,7 +710,7 @@
                 var hd = $.f.makeHeader(r, parent, 'embed_board', true);
                 container.appendChild(hd);
                 container.appendChild(bd);
-                container.appendChild($.f.makeFooter(parent, 'embed_board'));
+                container.appendChild($.f.makeFooter(parent, 'embed_board', lang));
                 $.f.cssHook(parent, container);
                 $.f.replace(parent, container);
               }
@@ -770,33 +821,30 @@
         render: {
           buttonBookmark: function (el) {
             $.f.debug('build bookmarklet button');
-
-            var a = $.f.make({'A': {'href': el.href, 'className': $.a.k + '_pin_it_button ' + $.a.k + '_pin_it_button_inline'}});
+            
+            var height = $.f.getData(el, 'height') || $.v.config.height;
+            var color = $.f.getData(el, 'color') || $.v.config.color;
+            var lang = $.f.getData(el, 'lang') || $.v.config.localImage;
+            
+            var a = $.f.make({'A': {'href': el.href, 'className': $.a.k + '_pin_it_button_' + height + ' ' + $.a.k + '_pin_it_button_' + lang + '_' + height + '_'  + color + ' ' + $.a.k + '_pin_it_button_inline_' + height + ' ' + $.a.k + '_pin_it_none'}});
             $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_pinit_bookmarklet');
-
-            var config = $.f.getData(el, 'config');
-            if ($.a.config.pinItCountPosition[config] === true) {
-              $.f.set(a, $.a.dataAttributePrefix + 'config', config);
-              a.className = a.className + ' ' + $.a.k + '_pin_it_' + config;
-            } else {
-              a.className = a.className + ' ' + $.a.k + '_pin_it_none';
-            }
-            $.f.getPinCount(encodeURIComponent($.v.here));
-
+            
             // fire the bookmarklet
             a.onclick = function () {
               $.f.fireBookmark();
               return false;
             };
 
-            var span = $.f.make({'SPAN': {'className': $.a.k + '_hidden', 'id': $.a.k + '_pin_count_' + $.f.callback.length, 'innerHTML': '<i></i>'}});
-            a.appendChild(span);
 
             $.f.replace(el, a);
 
           },
           buttonPin: function (el) {
             $.f.debug('build Pin It button');
+            
+            var height = $.f.getData(el, 'height') || $.v.config.height;
+            var color = $.f.getData(el, 'color') || $.v.config.color;
+            var lang = $.f.getData(el, 'lang') || $.v.config.localImage;
 
             // get just the url, media, and description parameters and percent-encode them, if needed
             var href, q;
@@ -825,13 +873,13 @@
             href = $.a.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&guid=' + $.v.guid + '-' + $.v.buttonId + '&description=' + q.description;
             $.v.buttonId = $.v.buttonId + 1;
 
-            var a = $.f.make({'A': {'href': href, 'className': $.a.k + '_pin_it_button ' + $.a.k + '_pin_it_button_inline', 'target': '_blank'}});
+            var a = $.f.make({'A': {'href': href, 'className': $.a.k + '_pin_it_button_' + height + ' '  + $.a.k + '_pin_it_button_' + lang + '_' + height + '_'  + color + ' ' + $.a.k + '_pin_it_button_inline_' + height, 'target': '_blank'}});
             $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_pinit');
 
             var config = $.f.getData(el, 'config');
             if ($.a.config.pinItCountPosition[config] === true) {
               $.f.set(a, $.a.dataAttributePrefix + 'config', config);
-              a.className = a.className + ' ' + $.a.k + '_pin_it_' + config;
+              a.className = a.className + ' ' + $.a.k + '_pin_it_' + config + '_' + height;
             } else {
               a.className = a.className + ' ' + $.a.k + '_pin_it_none';
             }
@@ -958,14 +1006,17 @@
         },
         config: function () {
           // find and apply configuration requests passed as data attributes on SCRIPT tag
-          var script = $.d.getElementsByTagName('SCRIPT'), n = script.length, i, j, foundMe = false;
+          var script = $.d.getElementsByTagName('SCRIPT'), n = script.length, i, j, p, foundMe = false;
 
           for (i = 0; i < n; i = i + 1) {
             if ($.a.me && script[i] && script[i].src && script[i].src.match($.a.me)) {
               // only do this for the first instance of the script on the page
               if (foundMe === false) {
                 for (j = 0; j < $.a.configParam.length; j = j + 1) {
-                  $.v.config[$.a.configParam[j]] = $.f.get(script[i], $.a.dataAttributePrefix + $.a.configParam[j]);
+                  p = $.f.get(script[i], $.a.dataAttributePrefix + $.a.configParam[j]);
+                  if (p) {
+                    $.v.config[$.a.configParam[j]] = p;
+                  }
                 }
                 foundMe = true;
               }
@@ -986,7 +1037,7 @@
               $.f.log('&type=pidget');
             }
           }, 1000);
-
+          
         },
         // send logging information
         log: function (str, endpoint) {
@@ -1015,7 +1066,12 @@
             'resolution': 1,
             'here': $.d.URL.split('#')[0],
             'hazFloatingButton': false,
-            'config': {},
+            'config': {
+              // button config defaults to 20px gray english
+              'color': 'gray',
+              'localImage': 'en',
+              'height': '20'
+            },
             'strings': $.a.strings.en,
             'guid': '',
             'buttonId': 0,
@@ -1023,6 +1079,8 @@
             'protocol': $.w.location.protocol,
             'userAgent': $.w.navigator.userAgent
           };
+          
+          
 
           // are we testing by dragging a file into a browser?
           if ($.v.protocol === 'file:') {
@@ -1050,29 +1108,65 @@
             $.v.guid = $.v.guid + '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ_abcdefghijkmnopqrstuvwxyz'.substr(Math.floor(Math.random() * 60), 1);
           }
 
-          // do we need to switch languages from en to something else?
-          var lang = $.d.getElementsByTagName('HTML')[0].getAttribute('lang');
-          if (lang) {
-            lang = lang.toLowerCase();
-            // direct match for pt-br
-            if (typeof $.a.strings[lang] === 'object') {
-              $.v.strings = $.a.strings[lang];
-            } else {
-              // match first part: en-uk = en
-              lang = lang.split('-')[0];
+          // find the script node we are running now
+          // remove it and set config options if we find any
+          $.f.config();
+          
+          var lang = $.a.defaultLang;
+          
+          // do we have a valid global language request in script node
+          if ($.v.config.lang && typeof $.a.strings[$.v.config.lang] === 'object') {
+            lang = $.v.config.lang;
+          } else {
+          
+            // do we need to switch languages from en to something else?
+            var lang = $.d.getElementsByTagName('HTML')[0].getAttribute('lang');
+               
+            if (!lang) {
+              var meta = $.d.getElementsByTagName('META');
+              // check for Content-Language meta
+              for (i = 0, n = meta.length; i < n; i = i + 1) {
+                var equiv = $.f.get(meta[i], 'http-equiv');
+                if (equiv) {
+                  // match content-language or Content-Language
+                  equiv = equiv.toLowerCase();
+                  if (equiv === 'content-language') {
+                    var content = $.f.get(meta[i], 'content');
+                    // is there something in content-language?
+                    if (content) {
+                      // use this, stop looking at metas
+                      lang = content.split('-')[0];
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+            
+            if (lang) {
+              lang = lang.toLowerCase();
+              // direct match for pt-br
               if (typeof $.a.strings[lang] === 'object') {
                 $.v.strings = $.a.strings[lang];
+              } else {
+                // match first part: en-uk = en
+                lang = lang.split('-')[0];
+                if (typeof $.a.strings[lang] === 'object') {
+                  $.v.strings = $.a.strings[lang];
+                }
               }
             }
           }
+          // do we need to localize the image
+          if ($.a.localImage[lang] === true) {
+            $.v.config.localImage = lang;
+          }
+          
+          $.v.lang = lang;
 
           if ($.w.devicePixelRatio && $.w.devicePixelRatio >= 2) {
             $.v.resolution = 2;
           }
-
-          // find the script node we are running now
-          // remove it and set config options if we find any
-          $.f.config();
 
           // note: build can also be triggered by a user-specified request passed in data-pin-build
           $.f.build();
@@ -1116,7 +1210,7 @@
   'countSource': 6,
   'dataAttributePrefix': 'data-pin-',
   // valid config parameters
-  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc', 'shallow'],
+  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc', 'shallow', 'color', 'height', 'lang'],
   // configuration for the pop-up window
   'pop': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=632,height=270,left=0,top=0',
   'popLarge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=900,height=500,left=0,top=0',
@@ -1144,6 +1238,11 @@
       'padding': 10
     }
   },
+  'localImage': {
+    'en': true,
+    'ja': true
+  },
+  'defaultLang': 'en',
   'strings': {
     'en': {
       'seeOn': 'See On',
@@ -1173,6 +1272,14 @@
       'pinnedBy': '&#201;pingl&#233; par',
       'onto': 'Sur'
     },
+    'ja': {
+      'seeOn': '&#12391;&#35211;&#12427;',
+      'seeOnTextAfterLogo': true,
+      'getThis': '&#24471;&#12427;',
+      'attribTo': '',
+      'pinnedBy': '&#12500;&#12531;&#12375;&#12383;&#20154;',
+      'onto': '&#12508;&#12540;&#12489;'
+    },
     'nl': {
       'seeOn': 'Bekijken op',
       'getThis': 'krijg',
@@ -1198,28 +1305,55 @@
   // CSS rules
   'rules': [
 
-    // PIN IT BUTTON
+    // PIN IT BUTTON -- 20px
 
-    'a._pin_it_button {  background-image: url(_cdn/images/pidgets/bps_rez.png); background-repeat: none; background-size: 40px 60px; height: 20px; margin: 0; padding: 0; vertical-align: baseline; text-decoration: none; width: 40px; background-position: 0 -20px }',
-    'a._pin_it_button:hover { background-position: 0 0px }',
-    'a._pin_it_button:active, a._pin_it_button._hazClick { background-position: 0 -40px }',
-    'a._pin_it_button_inline { position: relative; display: inline-block; }',
-    'a._pin_it_button_floating { position: absolute; }',
+    'a._pin_it_button_20 {  background-repeat: none; background-size: 40px 60px; height: 20px; margin: 0; padding: 0; vertical-align: baseline; text-decoration: none; width: 40px; background-position: 0 -20px }',
+    'a._pin_it_button_20:hover { background-position: 0 0px }',
+    'a._pin_it_button_20:active, a._pin_it_button_20._hazClick { background-position: 0 -40px }',
+    'a._pin_it_button_inline_20 { position: relative; display: inline-block; }',
+    'a._pin_it_button_floating_20 { position: absolute; }',
 
+    // background images
+    'a._pin_it_button_en_20_red { background-image: url(_cdn/images/pidgets/pinit_bg_en_rect_red_20__rez.png); }',
+    'a._pin_it_button_en_20_white { background-image: url(_cdn/images/pidgets/pinit_bg_en_rect_white_20__rez.png); }',
+    'a._pin_it_button_en_20_gray { background-image: url(_cdn/images/pidgets/pinit_bg_en_rect_gray_20__rez.png); }',
+
+    'a._pin_it_button_ja_20_red { background-image: url(_cdn/images/pidgets/pinit_bg_ja_rect_red_20__rez.png); }',
+    'a._pin_it_button_ja_20_white { background-image: url(_cdn/images/pidgets/pinit_bg_ja_rect_white_20__rez.png); }',
+    'a._pin_it_button_ja_20_gray { background-image: url(_cdn/images/pidgets/pinit_bg_ja_rect_gray_20__rez.png); }',
+    
     // the count
-    'a._pin_it_button span._pin_it_button_count { position: absolute; color: #777; text-align: center; text-indent: 0; }',
-    'a._pin_it_above span._pin_it_button_count { background: transparent url(_cdn/images/pidgets/fpa_rez.png) 0 0 no-repeat; background-size: 40px 29px; position: absolute; bottom: 21px; left: 0px; height: 29px; width: 40px; font: 12px Arial, Helvetica, sans-serif; line-height: 24px; text-indent: 0;}',
+    'a._pin_it_above_20 span._pin_it_button_count { background: transparent url(_cdn/images/pidgets/count_north_white_rect_20__rez.png) 0 0 no-repeat; background-size: 40px 29px; position: absolute; bottom: 21px; left: 0px; height: 29px; width: 40px; font: 12px Arial, Helvetica, sans-serif; line-height: 24px; text-indent: 0;}',
+    'a._pin_it_button_20 span._pin_it_button_count { position: absolute; color: #777; text-align: center; text-indent: 0; }',
+    'a._pin_it_beside_20 span._pin_it_button_count, a._pin_it_beside_20 span._pin_it_button_count i { background-color: transparent; background-repeat: no-repeat; background-image: url(_cdn/images/pidgets/count_east_white_rect_20__rez.png); }',
+    'a._pin_it_beside_20 span._pin_it_button_count { padding: 0 3px 0 10px; background-size: 45px 20px; background-position: 0 0; position: absolute; top: 0; left: 41px; height: 20px; font: 10px Arial, Helvetica, sans-serif; line-height: 20px; }',
+    'a._pin_it_beside_20 span._pin_it_button_count i { background-position: 100% 0; position: absolute; top: 0; right: -2px; height: 20px; width: 2px; }',
+    'a._pin_it_button_20._pin_it_above { margin-top: 20px; }',
 
-    // pin count background
-    'a._pin_it_beside span._pin_it_button_count, a._pin_it_beside span._pin_it_button_count i { background-color: transparent; background-repeat: no-repeat; background-image: url(_cdn/images/pidgets/fpb_rez.png); }',
+    // PIN IT BUTTON -- 28px
 
-    // pin count flag left site with number
+    'a._pin_it_button_28 { background-repeat: none; background-size: 56px 84px; height: 28px; margin: 0; padding: 0; vertical-align: baseline; text-decoration: none; width: 56px; background-position: 0 -28px }',
+    'a._pin_it_button_28:hover { background-position: 0 0px }',
+    'a._pin_it_button_28:active, a._pin_it_button_28._hazClick { background-position: 0 -56px }',
+    'a._pin_it_button_inline_28 { position: relative; display: inline-block; }',
+    'a._pin_it_button_floating_28 { position: absolute; }',
 
-    'a._pin_it_beside span._pin_it_button_count { padding: 0 3px 0 10px; background-size: 45px 20px; background-position: 0 0; position: absolute; top: 0; left: 41px; height: 20px; font: 10px Arial, Helvetica, sans-serif; line-height: 20px; }',
+    // background images
+    'a._pin_it_button_en_28_red { background-image: url(_cdn/images/pidgets/pinit_bg_en_rect_red_28__rez.png); }',
+    'a._pin_it_button_en_28_white { background-image: url(_cdn/images/pidgets/pinit_bg_en_rect_white_28__rez.png); }',
+    'a._pin_it_button_en_28_gray { background-image: url(_cdn/images/pidgets/pinit_bg_en_rect_gray_28__rez.png); }',
 
-    // pin count flag right cap
-    'a._pin_it_beside span._pin_it_button_count i { background-position: 100% 0; position: absolute; top: 0; right: -2px; height: 20px; width: 2px; }',
-    'a._pin_it_button._pin_it_above { margin-top: 20px; }',
+    'a._pin_it_button_ja_28_red { background-image: url(_cdn/images/pidgets/pinit_bg_ja_rect_red_28__rez.png); }',
+    'a._pin_it_button_ja_28_white { background-image: url(_cdn/images/pidgets/pinit_bg_ja_rect_white_28__rez.png); }',
+    'a._pin_it_button_ja_28_gray { background-image: url(_cdn/images/pidgets/pinit_bg_ja_rect_gray_28__rez.png); }',
+    
+    // the count
+    'a._pin_it_button_28 span._pin_it_button_count { position: absolute; color: #777; text-align: center; text-indent: 0; }',
+    'a._pin_it_above_28 span._pin_it_button_count { background: transparent url(_cdn/images/pidgets/count_north_white_rect_28__rez.png) 0 0 no-repeat; background-size: 56px 37px; position: absolute; bottom: 29px; left: 0px; height: 37px; width: 56px; font: 15px Arial, Helvetica, sans-serif; line-height: 28px; text-indent: 0;}',
+    'a._pin_it_beside_28 span._pin_it_button_count, a._pin_it_beside_28 span._pin_it_button_count i { background-color: transparent; background-repeat: no-repeat; background-image: url(_cdn/images/pidgets/count_east_white_rect_28__rez.png); }',
+    'a._pin_it_beside_28 span._pin_it_button_count { padding: 0 3px 0 10px; background-size: 63px 28px; background-position: 0 0; position: absolute; top: 0; left: 57px; height: 28px; font: 12px Arial, Helvetica, sans-serif; line-height: 28px; }',
+    'a._pin_it_beside_28 span._pin_it_button_count i { background-position: 100% 0; position: absolute; top: 0; right: -2px; height: 28px; width: 2px; }',
+    'a._pin_it_button_28._pin_it_above { margin-top: 28px; }',
 
     // FOLLOW ME ON PINTEREST BUTTON
 
@@ -1268,7 +1402,9 @@
     'span._embed_pin img { border: 0; margin: 0; padding: 0;}',
 
     // repin button
-    'span._embed_pin a._embed_pin_link i._repin { left: 10px; top: 10px; position: absolute; height: 33px; width: 64px; background: transparent url(_cdn/images/pidgets/repin_rez.png); background-size: 64px 99px; }',
+    'span._embed_pin a._embed_pin_link i._repin { left: 10px; top: 10px; position: absolute; height: 33px; width: 64px; background-size: 64px 99px; background: transparent url(_cdn/images/pidgets/repin_rez.png) }',
+    'span._embed_pin a._embed_pin_link i._repin_ja { left: 10px; top: 10px; position: absolute; height: 33px; width: 64px; background-size: 64px 99px; background: transparent url(_cdn/images/pidgets/ja_repin_rez.png) }',
+
     'span._embed_pin a._embed_pin_link i._repin:hover { background-position: 0 -33px; }',
     'span._embed_pin a._embed_pin_link i._repin._hazClick { background-position: 0 -66px; }',
 
@@ -1318,11 +1454,11 @@
     'span._embed_grid span._embed_grid_hd a:hover { text-decoration: none; background: #fff; }',
     'span._embed_grid span._embed_grid_hd a:active { text-decoration: none; background: #fff; }',
     // top line
-    'span._embed_grid span._embed_grid_hd a._embed_grid_first { top: 2px; font-family: helvetica, sans-serif; font-weight: bold; color:#333; font-size: 14px; line-height: 14px; }',
+    'span._embed_grid span._embed_grid_hd a._embed_grid_first { top: 2px; font-family: helvetica, sans-serif; font-weight: bold; color:#333; font-size: 14px; line-height: 16px; }',
     // second line
-    'span._embed_grid span._embed_grid_hd a._embed_grid_second { bottom: 11px; font-family: helvetica, sans-serif; color:#8e8e8e; font-size: 12px; line-height: 12px; }',
+    'span._embed_grid span._embed_grid_hd a._embed_grid_second { bottom: 11px; font-family: helvetica, sans-serif; color:#8e8e8e; font-size: 12px; line-height: 14px; }',
     // mid line
-    'span._embed_grid span._embed_grid_hd a._embed_grid_mid { top: 12px; font-family: helvetica, sans-serif; font-weight: bold; color:#333; font-size: 14px; line-height: 14px; }',
+    'span._embed_grid span._embed_grid_hd a._embed_grid_mid { top: 12px; font-family: helvetica, sans-serif; font-weight: bold; color:#333; font-size: 14px; line-height: 16px; }',
 
     // grid container - note final selector for oveflow:hidden won't have an !important, so we can override
     'span._embed_grid span._embed_grid_bd { display:block; margin: 0 10px; border-radius: 2px; position: relative; overflow: hidden }',
