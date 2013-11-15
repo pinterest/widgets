@@ -1,4 +1,4 @@
-// fix HTML entities in thumbnail titles
+// fix raggedy bottom row in scrolling grid widgets
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -365,6 +365,7 @@
           bd.style.height = scaleFactors.height + 'px';
           $.v.renderedWidth = (columns * (scaleFactors.width + $.a.tile.style.margin)) - $.a.tile.style.margin;
           bd.style.width =  $.v.renderedWidth + 'px';
+          var ct = $.f.make({'SPAN': {'className': $.a.k + '_embed_grid_ct'}});
           var c = 0;
           var h = [];
           for (var i = 0, n = data.length; i < n; i = i + 1) {
@@ -396,9 +397,19 @@
             thumb.style.left = (c * (scaleFactors.width + $.a.tile.style.margin)) + 'px';
             h[c] = h[c] + scale.height + $.a.tile.style.margin;
             thumb.appendChild(img);
-            bd.appendChild(thumb);
+            ct.appendChild(thumb);
             c = (c + 1) % columns;
           }
+
+          var minHeight = 10000;
+          for (var i = 0; i < h.length; i = i + 1) {
+            if (h[i] < minHeight) {
+              minHeight = h[i];
+            }
+          }
+          ct.style.height = minHeight + 'px';
+          bd.appendChild(ct);
+
           if ($.v.userAgent.match(/Mac OS X/)) {
             bd.className = bd.className + ' ' + $.a.k + '_embed_grid_scrolling_okay';
           }
@@ -1473,11 +1484,15 @@
     // mid line
     'span._embed_grid span._embed_grid_hd a._embed_grid_mid { top: 12px; font-family: helvetica, sans-serif; font-weight: bold; color:#333; font-size: 14px; line-height: 16px; }',
 
-    // grid container - note final selector for oveflow:hidden won't have an !important, so we can override
+    // grid body - note final selector for oveflow:hidden won't have an !important, so we can override
     'span._embed_grid span._embed_grid_bd { display:block; margin: 0 10px; border-radius: 2px; position: relative; overflow: hidden }',
+
     // set me if we're on an OS that doesn't supply scrollbars
     'span._embed_grid span._embed_grid_scrolling_okay { overflow: auto; }',
 
+    // grid container -- allows us to halt scrolling before we get to the ragged bottom
+    'span._embed_grid span._embed_grid_bd span._embed_grid_ct { display:block; position: relative; overflow: hidden; }',
+    
     // each thumbnail
     'span._embed_grid span._embed_grid_bd a._embed_grid_th { cursor: pointer; display: inline-block; position: absolute; overflow: hidden; }',
     // inset shadow mask
