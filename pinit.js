@@ -1,4 +1,4 @@
-// link pin thumbs to repin dialog for grid widgets
+// fix HTML entities in thumbnail titles
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -368,7 +368,10 @@
           var c = 0;
           var h = [];
           for (var i = 0, n = data.length; i < n; i = i + 1) {
-            var thumb = $.f.make({'A': {'className': $.a.k + '_embed_grid_th', 'title': data[i].description}});
+            
+            // converts HTML entities to unicode for thumb titles
+            var temp = $.f.make({'SPAN':{'innerHTML': data[i].description}});
+            var thumb = $.f.make({'A': {'className': $.a.k + '_embed_grid_th', 'title': temp.innerHTML}});
 
             $.f.set(thumb, $.a.dataAttributePrefix + 'pin-id', data[i].id);
             $.f.set(thumb, $.a.dataAttributePrefix + 'log', log);
