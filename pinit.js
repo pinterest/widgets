@@ -1,5 +1,4 @@
-/* jshint indent: false, maxlen: false */
-// clean up log calls
+// allow pin count for bookmarklet buttons
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -307,7 +306,7 @@
           var cleanLog = function () {
             var s = $.d.getElementsByTagName('SCRIPT');
             for (var i = 0, n = s.length; i < n; i = i + 1) {
-              if (s[i].src && s[i].src.match(/^https?:\/\/logc?\.pinterest\.com/)) {
+              if (s[i] && s[i].src && s[i].src.match(/^https?:\/\/logc?\.pinterest\.com/)) {
                 $.f.kill(s[i]);
               }
             }
@@ -866,6 +865,15 @@
             var lang = $.f.getData(el, 'lang') || $.v.config.localImage;
             
             var a = $.f.make({'A': {'href': el.href, 'className': $.a.k + '_pin_it_button_' + height + ' ' + $.a.k + '_pin_it_button_' + lang + '_' + height + '_'  + color + ' ' + $.a.k + '_pin_it_button_inline_' + height + ' ' + $.a.k + '_pin_it_none'}});
+
+            var config = $.f.getData(el, 'config');
+            if ($.a.config.pinItCountPosition[config] === true) {
+              $.f.set(a, $.a.dataAttributePrefix + 'config', config);
+              a.className = a.className + ' ' + $.a.k + '_pin_it_' + config + '_' + height;
+            } else {
+              a.className = a.className + ' ' + $.a.k + '_pin_it_none';
+            }
+            
             $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_pinit_bookmarklet');
             
             // fire the bookmarklet
@@ -1245,7 +1253,7 @@
       'beside': true
     }
   },
-  'minImgSize': 199,
+  'minImgSize': 119,
   // source 6 means "pinned with the externally-hosted Pin It button"
   'countSource': 6,
   'dataAttributePrefix': 'data-pin-',
@@ -1487,7 +1495,7 @@
     // avatar 
     'span._embed_grid span._embed_grid_hd a._avatar { position: absolute; top: 0; left: 0; height: 36px; width: 36px; }',
     'span._embed_grid span._embed_grid_hd a._avatar::before { position: absolute; content:""; z-index: 2; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 2px #888;  border-radius: 3px; }',
-    'span._embed_grid span._embed_grid_hd a._avatar img { position: relative; height: 36px; width: 36px; border-radius: 3px; border: none;}',
+    'span._embed_grid span._embed_grid_hd a._avatar img { position: relative; height: 36px; width: 36px; margin: 0; padding: 0; border-radius: 3px; border: none;}',
 
     // header
     'span._embed_grid span._embed_grid_hd a { text-decoration: none; background: transparent; cursor: pointer; white-space: nowrap; position: absolute; left: 44px; text-align: left; overflow: hidden; text-overflow: ellipsis; }',
