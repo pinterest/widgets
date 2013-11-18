@@ -1,4 +1,5 @@
-// fix raggedy bottom row in scrolling grid widgets
+/* jshint indent: false, maxlen: false */
+// clean up log calls
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -301,6 +302,21 @@
           if ($.v.config.hover) {
             $.f.listen($.d.b, 'mouseover', $.f.over);
           }
+          
+          // log calls may be dropped on the floor by the server; clean them up
+          var cleanLog = function () {
+            var s = $.d.getElementsByTagName('SCRIPT');
+            for (var i = 0, n = s.length; i < n; i = i + 1) {
+              if (s[i].src && s[i].src.match(/^https?:\/\/logc?\.pinterest\.com/)) {
+                $.f.kill(s[i]);
+              }
+            }
+            $.w.setTimeout(function () { 
+              cleanLog(); 
+            }, 2000);
+          };
+          cleanLog();
+          
         },
 
         getPinCount: function (url) {
@@ -1484,7 +1500,7 @@
     // mid line
     'span._embed_grid span._embed_grid_hd a._embed_grid_mid { top: 12px; font-family: helvetica, sans-serif; font-weight: bold; color:#333; font-size: 14px; line-height: 16px; }',
 
-    // grid body - note final selector for oveflow:hidden won't have an !important, so we can override
+    // grid body - note final selector for overflow:hidden won't have an !important, so we can override
     'span._embed_grid span._embed_grid_bd { display:block; margin: 0 10px; border-radius: 2px; position: relative; overflow: hidden }',
 
     // set me if we're on an OS that doesn't supply scrollbars
