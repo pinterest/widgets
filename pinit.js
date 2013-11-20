@@ -1,4 +1,4 @@
-// allow pin count for bookmarklet buttons
+// show pin counts for Any Image buttons
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -527,7 +527,13 @@
                   container.className = $.a.k + '_pin_it_button_count';
                   container.appendChild($.d.createTextNode('0'));
                 } else {
-                  $.f.debug('Zero pin count not rendered to the side.');
+                  if ($.f.getData(parent, 'zero')) {
+                    $.f.debug('Zero pin count rendered to the side.');
+                    container.className = $.a.k + '_pin_it_button_count';
+                    container.appendChild($.d.createTextNode('0'));
+                  } else {
+                    $.f.debug('Zero pin count NOT rendered to the side.');
+                  }
                 }
               }
 
@@ -866,6 +872,10 @@
             
             var a = $.f.make({'A': {'href': el.href, 'className': $.a.k + '_pin_it_button_' + height + ' ' + $.a.k + '_pin_it_button_' + lang + '_' + height + '_'  + color + ' ' + $.a.k + '_pin_it_button_inline_' + height + ' ' + $.a.k + '_pin_it_none'}});
 
+            if ($.f.getData(el, 'zero') || $.v.config.zero) {
+              $.f.set(a, $.a.dataAttributePrefix + 'zero', true);
+            }
+
             var config = $.f.getData(el, 'config');
             if ($.a.config.pinItCountPosition[config] === true) {
               $.f.set(a, $.a.dataAttributePrefix + 'config', config);
@@ -882,6 +892,9 @@
               return false;
             };
 
+            var span = $.f.make({'SPAN': {'className': $.a.k + '_hidden', 'id': $.a.k + '_pin_count_' + $.f.callback.length, 'innerHTML': '<i></i>'}});
+            a.appendChild(span);
+            $.f.getPinCount($.d.URL);
 
             $.f.replace(el, a);
 
@@ -922,6 +935,10 @@
 
             var a = $.f.make({'A': {'href': href, 'className': $.a.k + '_pin_it_button_' + height + ' '  + $.a.k + '_pin_it_button_' + lang + '_' + height + '_'  + color + ' ' + $.a.k + '_pin_it_button_inline_' + height, 'target': '_blank'}});
             $.f.set(a, $.a.dataAttributePrefix + 'log', 'button_pinit');
+
+            if ($.f.getData(el, 'zero') || $.v.config.zero) {
+              $.f.set(a, $.a.dataAttributePrefix + 'zero', true);
+            }
 
             var config = $.f.getData(el, 'config');
             if ($.a.config.pinItCountPosition[config] === true) {
@@ -1258,7 +1275,7 @@
   'countSource': 6,
   'dataAttributePrefix': 'data-pin-',
   // valid config parameters
-  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc', 'shallow', 'color', 'height', 'lang'],
+  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc', 'shallow', 'zero', 'color', 'height', 'lang'],
   // configuration for the pop-up window
   'pop': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=632,height=270,left=0,top=0',
   'popLarge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=900,height=500,left=0,top=0',
