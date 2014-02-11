@@ -242,8 +242,8 @@
 
           var c = $.f.getButtonConfig(img);
 
-          // size > 80x80 and source is not a data: uri?
-          if (img.height > $.a.minImgSize && img.width > $.a.minImgSize && !img.src.match(/^data/)) {
+          // size > 119x119, source is not a data: uri?, and doesn't have data-pinterest-skip attribute
+          if (img.height > $.a.minImgSize && img.width > $.a.minImgSize && !img.src.match(/^data/) && img.getAttribute('data-pinterest-skip') == null) {
 
             // make it fresh each time; this pays attention to individual image config options
             var buttonClass = $.a.k + '_pin_it_button_' + c.height + ' ' + $.a.k + '_pin_it_button_' + c.assets + '_' + c.height + '_' + c.color + ' ' + $.a.k + '_pin_it_button_floating_' + c.height;
@@ -1360,7 +1360,7 @@
               }
             }
           }
-          
+
           if ($.v.config.lang) {
             // a language has been specified in the call to pinit.js
             lang = $.v.config.lang;
