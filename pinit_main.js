@@ -1360,7 +1360,7 @@
               }
             }
           }
-          
+
           if ($.v.config.lang) {
             // a language has been specified in the call to pinit.js
             lang = $.v.config.lang;
