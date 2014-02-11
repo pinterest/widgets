@@ -242,7 +242,7 @@
 
           var c = $.f.getButtonConfig(img);
 
-          // size > 80x80 and source is not a data: uri?
+          // size > 119x119 and source is not a data: uri?
           if (img.height > $.a.minImgSize && img.width > $.a.minImgSize && !img.src.match(/^data/)) {
 
             // make it fresh each time; this pays attention to individual image config options
