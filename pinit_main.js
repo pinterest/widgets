@@ -1,6 +1,6 @@
 /* jshint indent: false, maxlen: false */
 
-// open shallow links in window.top.location to avoid iframe errors
+// fix hoverbutton position for sites with margin or padding on HTML element
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -168,15 +168,49 @@
           }
         },
 
+        // return current style property for element
+        getStyle: function (el, prop, getNum) {
+          var r = null;
+          // modern browsers
+          if ($.w.getComputedStyle) {
+            r = $.w.getComputedStyle(el).getPropertyValue(prop);
+          } else {
+            // IE browsers
+            if (el.currentStyle) {
+              r = el.currentStyle[prop];
+            }
+          }
+          // if we only want the numeric part, shave off px
+          if (r && getNum) {
+            r = parseInt(r) || 0;
+          }
+          return r;
+        },
+        
+        // get the natural position of an element
         getPos: function (el) {
+          var html, marginTop, paddingTop, marginLeft, paddingLeft;
           var x = 0, y = 0;
           if (el.offsetParent) {
             do {
               x = x + el.offsetLeft;
               y = y + el.offsetTop;
             } while (el = el.offsetParent);
+          
+            // add padding or margin set to the HTML element - fixes Wordpress admin toolbar
+            if (!$.v.hazIE) {
+              var html = $.d.getElementsByTagName('HTML')[0];
+              var marginTop = $.f.getStyle(html, "margin-top", true) || 0;
+              var paddingTop = $.f.getStyle(html, "padding-top", true) || 0;
+              var marginLeft = $.f.getStyle(html, "margin-left", true) || 0;
+              var paddingLeft = $.f.getStyle(html, "padding-left", true) || 0;
+              x = x + (marginLeft + paddingLeft);
+              y = y + (marginTop + paddingTop);
+            }
+              
             return {"left": x, "top": y};
           }
+
         },
 
         hideFloatingButton: function () {
@@ -1286,6 +1320,12 @@
             }
           }
 
+          // are we using IE?
+          if ($.v.userAgent.match(/MSIE/) !== null) {
+            // we're on Internet Explorer. Don't check margin or padding on HTML when determing hoverbutton position.
+            $.v.hazIE = true;
+          }
+          
           // make a 12-digit base-60 number for conversion tracking
           for (var i = 0; i < 12; i = i + 1) {
             $.v.guid = $.v.guid + '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ_abcdefghijkmnopqrstuvwxyz'.substr(Math.floor(Math.random() * 60), 1);
