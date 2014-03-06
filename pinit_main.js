@@ -1,6 +1,6 @@
 /* jshint indent: false, maxlen: false */
 
-// set data-pin-hover to true on document.body if hoverbuttons are active
+// open shallow links in window.top.location to avoid iframe errors
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -561,6 +561,7 @@
             'SCRIPT': {
               'type': 'text/javascript',
               'charset': 'utf-8',
+              'pinMethod': 'button',
               'src': $.a.endpoint.bookmark + '?r=' + Math.random() * 99999999
             }
           }));
@@ -724,7 +725,7 @@
                     }
                   }));
                   pinner.appendChild($.f.make({
-                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': strings.pinnedBy + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.pinner.full_name) + '</em>'}
+                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': '<em class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.pinner.full_name) + '</em>' + $.f.filter(pin.board.name) }
                   }));
 
                   var pinnerShield = $.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}});
@@ -733,35 +734,6 @@
                   pinner.appendChild(pinnerShield);
 
                   container.appendChild(pinner);
-                }
-
-                // board
-                if (pin.board && pin.board.url && pin.board.image_thumbnail_url && pin.board.name) {
-                  $.f.debug('Building board line');
-
-                  // future-proof against API weirdness: sometimes absolute paths are not really absolute
-                  if (!pin.board.url.match(/^(\/\/pinterest\.com|http:\/\/pinterest\.com|https:\/\/pinterest\.com)/)) {
-                    pin.board.url = $.v.endpoint.pinterest + pin.board.url;
-                    $.f.debug('appending Pinterest prefix to board URL');
-                  }
-
-                  var board = $.f.make({'A': {'className': $.a.k + '_embed_pin_text', 'href': pin.board.url, 'target': '_blank'}});
-                  board.appendChild($.f.make({
-                    'IMG': {
-                      'className': $.a.k + '_embed_pin_text_avatar',
-                      'src': pin.board.image_thumbnail_url
-                    }
-                  }));
-                  board.appendChild($.f.make({
-                    'SPAN': {'className': $.a.k + '_embed_pin_text_container', 'innerHTML': strings.onto + ' <em class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.board.name) + '</em>'}
-                  }));
-
-                  var boardShield = $.f.make({'B':{'className': $.a.k + '_embed_pin_link_shield'}});
-                  $.f.set(boardShield, $.a.dataAttributePrefix + 'log', 'board_from_embedded_pin');
-                  $.f.set(boardShield, $.a.dataAttributePrefix + 'href', pin.board.url);
-                  board.appendChild(boardShield);
-
-                  container.appendChild(board);
                 }
 
                 $.f.cssHook(parent, container);
@@ -909,7 +881,7 @@
                   // yes: Safari has tried to pop the app but failed
                   if (diff < delay) {
                     // send us over to pin/create/button (dismisses error pop-up)
-                    $.w.location = shallow;
+                    $.w.top.location = shallow;
                   }
                 }
                 count = count + 1;
@@ -1411,7 +1383,7 @@
     'board': '//widgets.pinterest.com/v3/pidgets/boards/',
     'user': '//widgets.pinterest.com/v3/pidgets/users/',
     'log': '//log.pinterest.com/',
-    'logc': '//logc.pinterest.com/',
+    'logc': '//logc.pinterest.com/'
   },
   'config': {
     'pinItCountPosition': {
@@ -1492,157 +1464,113 @@
    'cs': {
       'seeOn': 'Zobrazit na',
       'getThis': 'st&#229;hnout',
-      'attribTo': 'od',
-      'pinnedBy': 'P&#345;upnul',
-      'onto': 'Na'
+      'attribTo': 'od'
     },
     'da': {
       'seeOn': 'Se p&#229;',
       'getThis': 'hent den',
-      'attribTo': 'af',
-      'pinnedBy': 'Tilf&#248;jet af',
-      'onto': 'P&#229;'
+      'attribTo': 'af'
     },
     'de': {
       'seeOn': 'Ansehen auf',
       'getThis': 'bekomme',
-      'attribTo': 'von',
-      'pinnedBy': 'Gepinnt von',
-      'onto': 'Auf'
+      'attribTo': 'von'
     },
     'en': {
       'seeOn': 'See On',
       'getThis': 'get this',
-      'attribTo': 'by',
-      'pinnedBy': 'Pinned by',
-      'onto': 'Onto'
+      'attribTo': 'by'
     },
     'en-gb': {
       'seeOn': 'See On',
       'getThis': 'get this',
-      'attribTo': 'by',
-      'pinnedBy': 'Pinned by',
-      'onto': 'Onto'
+      'attribTo': 'by'
     },
     'en-uk': {
       'seeOn': 'See On',
       'getThis': 'get this',
-      'attribTo': 'by',
-      'pinnedBy': 'Pinned by',
-      'onto': 'Onto'
+      'attribTo': 'by'
     },
     'es': {
       'seeOn': 'Ver En',
       'getThis': 'obtener',
-      'attribTo': 'por',
-      'pinnedBy': 'Pineado por',
-      'onto': 'En'
+      'attribTo': 'por'
     },
     'fi': {
       'seeOn': 'Katso palvelussa',
       'getThis': 'hanki',
-      'attribTo': 'tekij&#228;',
-      'pinnedBy': 'Lis&#228;&#228;j&#228;',
-      'onto': 'tauluun'
+      'attribTo': 'tekij&#228;'
     },
     'fr': {
       'seeOn': 'Voir sur',
       'getThis': 'obtenir',
-      'attribTo': 'par',
-      'pinnedBy': '&#201;pingl&#233; par',
-      'onto': 'Sur'
+      'attribTo': 'par'
     },
     'id': {
       'seeOn': 'Lihat di',
       'getThis': 'dapatkan',
-      'attribTo': 'oleh',
-      'pinnedBy': 'Dipin oleh',
-      'onto': 'ke'
+      'attribTo': 'oleh'
     },
     'it': {
       'seeOn': 'Visualizza in',
       'getThis': 'scarica',
-      'attribTo': 'da',
-      'pinnedBy': 'Pinnato da',
-      'onto': 'A'
+      'attribTo': 'da'
     },
     'ko': {
       'seeOn': '&#45796;&#51020;&#50640;&#49436; &#48372;&#44592;',
       'getThis': '&#45796;&#50868;&#47196;&#46300; &#54616;&#44592;',
-      'attribTo': '&#51060; &#54592;&#54632;',
-      'pinnedBy': '&#54592;&#54620; &#49324;&#46988;',
-      'onto': '&#50640;'
+      'attribTo': '&#51060; &#54592;&#54632;'
     },
     'ja': {
       'seeOn': '&#12391;&#35211;&#12427;',
       'seeOnTextAfterLogo': true,
       'getThis': '&#24471;&#12427;',
-      'attribTo': '',
-      'pinnedBy': '&#12500;&#12531;&#12375;&#12383;&#20154;',
-      'onto': '&#12508;&#12540;&#12489;'
+      'attribTo': ''
     },
     'nb': {
       'seeOn': 'Vis p&#229;',
       'getThis': 'hent den',
-      'attribTo': 'av',
-      'pinnedBy': 'Lagt til av',
-      'onto': 'P&#229;'
+      'attribTo': 'av'
     },
     'nl': {
       'seeOn': 'Bekijken op',
       'getThis': 'krijg',
-      'attribTo': 'door',
-      'pinnedBy': 'Gepind door',
-      'onto': 'Op'
+      'attribTo': 'door'
     },
     'pl': {
       'seeOn': 'Zobacz na',
       'getThis': 'pobierz',
-      'attribTo': 'przez',
-      'pinnedBy': 'Przypi&#281;te przez',
-      'onto': 'Na'
+      'attribTo': 'przez'
     },
     'pt': {
       'seeOn': 'Ver em',
       'getThis': 'obter',
-      'attribTo': 'por',
-      'pinnedBy': 'Pin afixado por',
-      'onto': 'Em'
+      'attribTo': 'por'
     },
     'pt-br': {
       'seeOn': 'Ver em',
       'getThis': 'obter',
-      'attribTo': 'por',
-      'pinnedBy': 'Pinado por',
-      'onto': 'Em'
+      'attribTo': 'por'
     },
     'ru': {
       'seeOn': '&#1055;&#1086;&#1089;&#1084;&#1086;&#1090;&#1088;&#1077;&#1090;&#1100; &#1074;',
       'getThis': '&#1087;&#1086;&#1083;&#1091;&#1095;&#1080;&#1090;&#1100;',
-      'attribTo': '&#1087;&#1086;&#1083;&#1100;&#1079;&#1086;&#1074;&#1072;&#1090;&#1077;&#1083;&#1077;&#1084;',
-      'pinnedBy': '&#1055;&#1088;&#1080;&#1082;&#1086;&#1083;&#1086;&#1090;&#1086;',
-      'onto': '&#1082;'
+      'attribTo': '&#1087;&#1086;&#1083;&#1100;&#1079;&#1086;&#1074;&#1072;&#1090;&#1077;&#1083;&#1077;&#1084;'
     },
     'sk': {
       'seeOn': 'Zobrazi&#357; na',
       'getThis': 'stiahnu&#357;',
-      'attribTo': 'od',
-      'pinnedBy': 'Pripol',
-      'onto': 'Na'
+      'attribTo': 'od'
     },
     'sv': {
       'seeOn': 'Visa p&#229;',
       'getThis': 'H&#228;mta',
-      'attribTo': 'av',
-      'pinnedBy': 'Tillagd av',
-      'onto': 'P&#229;'
+      'attribTo': 'av'
     },
     'tr': {
       'seeOn': '&#220;zerinde g&#246;r',
       'getThis': 'bunu al&#305;n',
-      'attribTo': 'taraf&#305;ndan',
-      'pinnedBy': 'pinleyen',
-      'onto': '&#351;u panoya'
+      'attribTo': 'taraf&#305;ndan'
     }
   },
   // CSS rules
