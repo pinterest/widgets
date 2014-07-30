@@ -1,6 +1,6 @@
 /* jshint indent: false, maxlen: false */
 
-// don't capture event listeners with onclick
+// fix Japanese background-size attribute for embedded pin widget
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -227,6 +227,7 @@
             'shape': $.f.getData(el, 'shape') || $.v.config.shape,
             'assets': $.f.getData(el, 'lang') || $.v.config.lang,
             'zero': $.f.getData(el, 'zero') || null,
+            'pad': $.f.getData(el, 'count-pad') || null,
             'config': $.f.getData(el, 'config') || 'none'
           };
 
@@ -352,77 +353,83 @@
             log = $.f.getData(el, 'log');
             if (log) {
 
-              var href = $.f.getData(el, 'href');
-
-              if (href) {
-
-                $.f.log('&type=' + log + '&href=' + encodeURIComponent(href));
-
-                // gray out any clickable thing
-                if (!el.className.match(/hazClick/)) {
-                  el.className = el.className + ' ' + $.a.k + '_hazClick';
+              if (log === 'embed_pin_play') {
+                var img = el.parentNode.getElementsByTagName('IMG')[0];
+                if (el.innerHTML !== 'II GIF') {
+                  el.innerHTML = 'II GIF';
+                  img.src = img.src.replace(/237x/, 'originals');
+                } else {
+                  el.innerHTML = '&#9654; GIF';
+                  img.src = img.src.replace(/originals/, '237x');
                 }
+              } else {
+                var href = $.f.getData(el, 'href');
+                if (href) {
+                  $.f.log('&type=' + log + '&href=' + encodeURIComponent(href));
+                  // gray out any clickable thing
+                  if (!el.className.match(/hazClick/)) {
+                    el.className = el.className + ' ' + $.a.k + '_hazClick';
+                  }
 
-                switch (log) {
-
-                  case 'button_pinit':
-                    var q = $.f.parse(href, {'url': true, 'media': true, 'description': true});
-                    if (!q.description) {
-                      // log an error
-                      $.f.log('&type=config_warning&warning_msg=no_description&href=' + encodeURIComponent($.d.URL));
-                    }
-                    // found valid URLs?
-                    if (q.url && q.url.match(/^http/i) && q.media && q.media.match(/^http/i)) {
-                      // yes
-                      if (!$.v.config.shallow && typeof $.f.deepLink[$.v.deepBrowser] === 'function') {
-                        // attempt to deep link
-                        $.f.deepLink[$.v.deepBrowser](href);
-                      } else {
-                        // pop the pin form
-                        $.w.open(href, 'pin' + new Date().getTime(), $.a.pop);
+                  switch (log) {
+                    case 'button_pinit':
+                      var q = $.f.parse(href, {'url': true, 'media': true, 'description': true});
+                      if (!q.description) {
+                        // log an error
+                        $.f.log('&type=config_warning&warning_msg=no_description&href=' + encodeURIComponent($.d.URL));
                       }
-                    } else {
-                      // log an error
-                      $.f.log('&type=config_error&error_msg=invalid_url&href=' + encodeURIComponent($.d.URL));
-                      // fire up the bookmarklet and hope for the best
+                      // found valid URLs?
+                      if (q.url && q.url.match(/^http/i) && q.media && q.media.match(/^http/i)) {
+                        // yes
+                        if (!$.v.config.shallow && typeof $.f.deepLink[$.v.deepBrowser] === 'function') {
+                          // attempt to deep link
+                          $.f.deepLink[$.v.deepBrowser](href);
+                        } else {
+                          // pop the pin form
+                          $.w.open(href, 'pin' + new Date().getTime(), $.a.pop);
+                        }
+                      } else {
+                        // log an error
+                        $.f.log('&type=config_error&error_msg=invalid_url&href=' + encodeURIComponent($.d.URL));
+                        // fire up the bookmarklet and hope for the best
+                        $.f.fireBookmark();
+                      }
+                    break;
+
+                    // pop bookmarklet
+                    case 'button_pinit_bookmarklet':
                       $.f.fireBookmark();
-                    }
-                  break;
+                    break;
 
-                  // pop bookmarklet
-                  case 'button_pinit_bookmarklet':
-                    $.f.fireBookmark();
-                  break;
+                    // pop pin create dialog
+                    case 'button_pinit_floating':
+                      $.w.open(href, 'pin' + new Date().getTime(), $.a.pop);
+                      $.f.hideFloatingButton();
+                      $.v.hazFloatingButton = false;
+                    break;
 
-                  // pop pin create dialog
-                  case 'button_pinit_floating':
-                    $.w.open(href, 'pin' + new Date().getTime(), $.a.pop);
-                    $.f.hideFloatingButton();
-                    $.v.hazFloatingButton = false;
-                  break;
+                    // pop repin dialog
+                    case 'embed_pin':
+                    case 'embed_pin_repin':
+                    case 'embed_board_thumb':
+                    case 'embed_user_thumb':
+                      $.w.open(href, 'pin' + new Date().getTime(), $.a.popLarge);
+                    break;
 
-                  // pop repin dialog
-                  case 'embed_pin':
-                  case 'embed_pin_repin':
-                  case 'embed_board_thumb':
-                  case 'embed_user_thumb':
-                    $.w.open(href, 'pin' + new Date().getTime(), $.a.popLarge);
-                  break;
+                    // open href in new page
+                    case 'embed_pin_pinner':
+                    case 'embed_pin_img':
+                    case 'embed_board_hd':
+                    case 'embed_user_hd':
+                    case 'embed_board_ft':
+                    case 'embed_user_ft':
+                    case 'button_follow':
+                      $.w.open(href, '_blank');
+                    break;
 
-                  // open href in new page
-                  case 'embed_pin_build':
-                  case 'embed_pin_pinner':
-                  case 'embed_pin_img':
-                  case 'embed_board_hd':
-                  case 'embed_user_hd':
-                  case 'embed_board_ft':
-                  case 'embed_user_ft':
-                  case 'button_follow':
-                    $.w.open(href, '_blank');
-                  break;
-
-                  default:
-                  break;
+                    default:
+                    break;
+                  }
                 }
               }
 
@@ -791,7 +798,6 @@
                 // main image
                 var link = $.f.make({'A': {
                   'className': $.a.k + '_embed_pin_link',
-                  'title': pin.description,
                   'data-pin-log': 'embed_pin',
                   'data-pin-href': $.v.endpoint.repin.replace(/%s/, pin.id)
                 }});
@@ -828,15 +834,14 @@
 
                 link.appendChild(repin);
 
-                // open the widget builder with this pin in preview
-                var getThis = $.f.make({'I': {
-                  'className': $.a.k + '_getThis',
-                  'innerHTML': strings.getThis + '<i></i>',
-                  'data-pin-id': pin.id,
-                  'data-pin-log': 'embed_pin_build',
-                  'data-pin-href': $.v.endpoint.builder + '#do_embed_pin&' + pin.id
-                }});
-                link.appendChild(getThis);
+                if (pin.embed && pin.embed.type && pin.embed.type === 'gif') {
+                  var play = $.f.make({'I': {
+                    'className': $.a.k + '_play ' + $.a.k + '_paused',
+                    'innerHTML': '&#9654; GIF',
+                    'data-pin-log': 'embed_pin_play'
+                  }});
+                  link.appendChild(play);
+                }
 
                 container.appendChild(link);
 
@@ -863,7 +868,34 @@
                   }));
                   attribution.appendChild($.f.make({'SPAN':{'className': $.a.k + '_embed_pin_attrib',  'innerHTML': strings.attribTo + ' <a href="' + pin.attribution.url + '" target="_blank">' + $.f.filter(pin.attribution.author_name) + '</a>'}}));
                   description.appendChild(attribution);
+
                 }
+
+                if (pin.repin_count || pin.like_count) {
+                  // stats
+                  var stats = $.f.make({'SPAN': {
+                    'className': $.a.k + '_embed_pin_stats'
+                  }});
+
+                  if (pin.repin_count) {
+                    var repin_count = $.f.make({'SPAN': {
+                      'className': $.a.k + '_embed_pin_stats_repin_count',
+                      'innerHTML': '' + pin.repin_count
+                    }});
+                    stats.appendChild(repin_count);
+                  }
+
+                  if (pin.like_count) {
+                    var like_count = $.f.make({'SPAN': {
+                      'className': $.a.k + '_embed_pin_stats_like_count',
+                      'innerHTML': '' + pin.like_count
+                    }});
+                    stats.appendChild(like_count);
+                  }
+
+                  description.appendChild(stats);
+                }
+
                 container.appendChild(description);
 
                 // pinner
@@ -888,7 +920,7 @@
                   pinner.appendChild($.f.make({
                     'SPAN': {
                       'className': $.a.k + '_embed_pin_text_container',
-                      'innerHTML': '<em data-pin-log="embed_pin_pinner" data-pin-href="' + pin.pinner.profile_url + '" class="' + $.a.k + '_embed_pin_text_container_em">' + $.f.filter(pin.pinner.full_name) + '</em>' + $.f.filter(pin.board.name),
+                      'innerHTML': '<span data-pin-log="embed_pin_pinner" data-pin-href="' + pin.pinner.profile_url + '" class="' + $.a.k + '_embed_pin_text_container_pinner">' + $.f.filter(pin.pinner.full_name) + '</span><span class="' + $.a.k + '_embed_pin_text_container_board">' + $.f.filter(pin.board.name) + '</span>',
                       'data-pin-log': 'embed_pin_pinner',
                       'data-pin-href': pin.pinner.profile_url
                     }
@@ -1152,6 +1184,11 @@
             if ($.a.config.pinItCountPosition[config] === true) {
               $.f.set(a, $.a.dataAttributePrefix + 'config', config);
               a.className = a.className + ' ' + $.a.k + '_pin_it_' + c.config + '_' + c.height;
+
+              if (c.pad) {
+                a.className = a.className + ' ' + $.a.k + '_pin_it_' + c.config + '_' + c.height + '_pad';
+              }
+
             } else {
               a.className = a.className + ' ' + $.a.k + '_pin_it_none';
             }
@@ -1184,6 +1221,7 @@
             a.appendChild($.f.make({'B': {}}));
             a.appendChild($.f.make({'I': {}}));
             $.f.replace(el, a);
+            $.v.countFollow = $.v.countFollow + 1;
           },
           embedPin: function (el) {
             $.f.debug('build embedded pin');
@@ -1191,6 +1229,7 @@
             if (pin && parseInt(pin, 10) > 0) {
               $.f.getPinsIn('pin', '', {'pin_ids': pin});
             }
+            $.v.countPin = $.v.countPin + 1;
           },
           embedUser: function (el) {
             $.f.debug('build embedded profile');
@@ -1198,6 +1237,7 @@
             if (user) {
               $.f.getPinsIn('user', user + '/pins/');
             }
+            $.v.countProfile = $.v.countProfile + 1;
           },
           embedBoard: function (el) {
             $.f.debug('build embedded board');
@@ -1206,6 +1246,7 @@
             if (user && board) {
               $.f.getPinsIn('board', user + '/' + board + '/pins/');
             }
+            $.v.countBoard = $.v.countBoard + 1;
           }
         },
         getPinsIn: function (endpoint, path, params) {
@@ -1290,7 +1331,7 @@
           }
 
           $.w.setTimeout(function () {
-            var str = '&type=pidget&sub=' + $.v.config.domain + '&button_count=' + $.v.countButton;
+            var str = '&type=pidget&sub=' + $.v.config.domain + '&button_count=' + $.v.countButton + '&follow_count=' + $.v.countFollow + '&pin_count=' + $.v.countPin + '&profile_count=' + $.v.countProfile + '&board_count=' + $.v.countBoard;
             if (typeof $.v.config.logc === 'string') {
               $.f.log(str + '&logc=' + $.v.config.logc, $.a.endpoint.logc);
             } else {
@@ -1298,29 +1339,34 @@
             }
           }, 1000);
         },
+
         // send logging information
         log: function (str, endpoint) {
 
+            // if we have not specified a special logging endpoint, use default
             if (!endpoint) {
               endpoint = $.a.endpoint.log;
             }
 
-            // create the logging call
-            var query = '?via=' + encodeURIComponent($.v.here) + '&guid=' + $.v.guid;
+            // query always starts with guid
+            var query = '?guid=' + $.v.guid;
 
-            // add the optional string to log
+            // add optional string &foo=bar
             if (str) {
               query = query + str;
             }
 
+            // add the page we're looking at right now
+            query = query + '&via=' + encodeURIComponent($.v.here);
+
             $.f.call(endpoint + query, $.f.ping.log);
         },
 
-        // trade a lang for domain, strings, and widget builder
+        // trade a lang for domain and strings
         langToDomain: function (str) {
 
           // this will run once on init and (eventually) once for every widget that has a data-pin-lang specified
-          var langPart, locPart, strParts, checkDomain, thisDomain, domainMatch, langMatch, foundDomain, builderUrl;
+          var langPart, locPart, strParts, checkDomain, thisDomain, domainMatch, langMatch, foundDomain;
 
           // clean input
           if (!str) {
@@ -1338,8 +1384,6 @@
           // defaults
           domainMatch = $.a.defaults.domain;
           langMatch = $.a.defaults.lang;
-          builderUrl = 'business.pinterest.com/widget-builder/'
-          builderMatch = 'http://' + builderUrl;
           stringMatch = $.a.defaults.strings;
           assetMatch = $.a.defaults.assets;
 
@@ -1381,16 +1425,12 @@
           if (thisDomain.strings && $.a.strings[thisDomain.strings]) {
             stringMatch = thisDomain.strings;
           }
-          // set widget builder domain
-          if (thisDomain.builder) {
-            builderMatch = 'http://' + thisDomain.builder + '.' + builderUrl;
-          }
 
           // if we see www:th, the domain is www
           domainMatch = domainMatch.split(':')[0];
 
           // this result should always be fully populated
-          return {'lang': langMatch, 'domain': domainMatch, 'builder':  builderMatch, 'strings': stringMatch, 'assets':  assetMatch };
+          return {'lang': langMatch, 'domain': domainMatch, 'strings': stringMatch, 'assets':  assetMatch };
 
         },
 
@@ -1422,7 +1462,11 @@
             'deepBrowser': null,
             'protocol': $.w.location.protocol,
             'userAgent': $.w.navigator.userAgent,
-            'countButton': 0
+            'countButton': 0,
+            'countFollow': 0,
+            'countPin': 0,
+            'countBoard': 0,
+            'countProfile': 0
           };
 
           // are we testing by dragging a file into a browser?
@@ -1501,7 +1545,7 @@
             lang = $.v.config.lang;
           }
 
-          // once we know our lang, map language, domain, assets, and widget builder
+          // once we know our lang, map language, domain, and assets
           var map = $.f.langToDomain(lang);
 
           $.v.config.assets = map.assets;
@@ -1510,7 +1554,6 @@
 
           $.v.endpoint = {
             'pinterest': '//' + map.domain + '.pinterest.com',
-            'builder': map.builder,
             'repin': '//' + map.domain + '.pinterest.com/pin/%s/repin/x/',
             'create': '//' + map.domain + '.pinterest.com/pin/create/button/?'
           }
@@ -1609,14 +1652,14 @@
     'dk': { 'lang': ['da'], 'strings': 'da'},
     'es': { 'lang': ['es'], 'strings': 'es'},
     'fi': { 'lang': ['fi'], 'strings': 'fi'},
-    'fr': { 'lang': ['fr'], 'strings': 'fr', 'builder': 'fr'},
-    'gb': { 'lang': ['en-uk', 'en-gb', 'en-ie'], 'strings': 'en', 'builder': 'uk'},
+    'fr': { 'lang': ['fr'], 'strings': 'fr'},
+    'gb': { 'lang': ['en-uk', 'en-gb', 'en-ie'], 'strings': 'en'},
     'gr': { 'lang': ['el'], 'strings': 'el'},
     'hu': { 'lang': ['hu'], 'strings': 'hu'},
     'id': { 'lang': ['id', 'in'], 'strings': 'id'},
     'in': { 'lang': ['hi'], 'strings': 'hi'},
     'it': { 'lang': ['it'], 'strings': 'it'},
-    'jp': { 'lang': ['ja'], 'strings': 'ja', 'builder': 'ja', 'assets': 'ja'},
+    'jp': { 'lang': ['ja'], 'strings': 'ja', 'assets': 'ja'},
     'kr': { 'lang': ['ko', 'kr'], 'strings': 'ko'},
     'www:my': { 'lang': ['ms'], 'strings': 'ms'},
     'nl': { 'lang': ['nl'], 'strings': 'nl'},
@@ -1636,158 +1679,127 @@
   'strings': {
    'cs': {
       'seeOn': 'Zobrazit na',
-      'getThis': 'st&#229;hnout',
       'attribTo': 'od'
     },
     'da': {
       'seeOn': 'Se p&#229;',
-      'getThis': 'hent den',
       'attribTo': 'af'
     },
     'de': {
       'seeOn': 'Ansehen auf',
-      'getThis': 'bekomme',
       'attribTo': 'von'
     },
     'el': {
       'seeOn': '&delta;&epsilon;&#943;&tau;&epsilon; &tau;&omicron; &sigma;&tau;&omicron;',
-      'getThis': '&beta;&rho;&epsilon;&#943;&tau;&epsilon; &tau;&omicron;',
       'attribTo': '&alpha;&pi;&omicron;&delta;&#943;&delta;&epsilon;&tau;&alpha;&iota; &sigma;&tau;&omicron;'
     },
     'en': {
       'seeOn': 'See On',
-      'getThis': 'get this',
       'attribTo': 'by'
     },
     'en-gb': {
       'seeOn': 'See On',
-      'getThis': 'get this',
       'attribTo': 'by'
     },
     'en-uk': {
       'seeOn': 'See On',
-      'getThis': 'get this',
       'attribTo': 'by'
     },
     'es': {
       'seeOn': 'Ver En',
-      'getThis': 'obtener',
       'attribTo': 'por'
     },
     'fi': {
       'seeOn': 'Katso palvelussa',
-      'getThis': 'hanki',
       'attribTo': 'tekij&#228;'
     },
     'fr': {
       'seeOn': 'Voir sur',
-      'getThis': 'obtenir',
       'attribTo': 'par'
     },
     'hi': {
       'seeOn': '&#2346;&#2352; &#2342;&#2375;&#2326;&#2375;&#2306;',
-      'getThis': '&#2346;&#2381;&#2352;&#2366;&#2346;&#2381;&#2340; &#2325;&#2352;&#2375;&#2306;',
       'attribTo': '&#2325;&#2379; &#2358;&#2381;&#2352;&#2375;&#2351; &#2342;&#2375;&#2344;&#2366;'
     },
     'hu': {
       'seeOn': 'L&aacute;sd itt',
-      'getThis': 'Modul beszerz&eacute;se',
       'attribTo': 'Hozz&aacute;rendelve a k&ouml;vetkez&#337;h&ouml;z:'
     },
     'id': {
       'seeOn': 'Lihat di',
-      'getThis': 'dapatkan',
       'attribTo': 'oleh'
     },
     'it': {
       'seeOn': 'Visualizza in',
-      'getThis': 'scarica',
       'attribTo': 'da'
     },
     'ko': {
       'seeOn': '&#45796;&#51020;&#50640;&#49436; &#48372;&#44592;',
-      'getThis': '&#45796;&#50868;&#47196;&#46300; &#54616;&#44592;',
       'attribTo': '&#51060; &#54592;&#54632;'
     },
     'ja': {
       'seeOn': '&#12391;&#35211;&#12427;',
       'seeOnTextAfterLogo': true,
-      'getThis': '&#24471;&#12427;',
       'attribTo': ''
     },
     'ms': {
       'seeOn': 'lihat di',
-      'getThis': 'dapatkan ini',
       'attribTo': 'attribut ke'
     },
     'nb': {
       'seeOn': 'Vis p&#229;',
-      'getThis': 'hent den',
       'attribTo': 'av'
     },
     'nl': {
       'seeOn': 'Bekijken op',
-      'getThis': 'krijg',
       'attribTo': 'door'
     },
     'pl': {
       'seeOn': 'Zobacz na',
-      'getThis': 'pobierz',
       'attribTo': 'przez'
     },
     'pt': {
       'seeOn': 'Ver em',
-      'getThis': 'obter',
       'attribTo': 'por'
     },
     'pt-br': {
       'seeOn': 'Ver em',
-      'getThis': 'obter',
       'attribTo': 'por'
     },
     'ro': {
       'seeOn': 'vezi pe',
-      'getThis': 'descarc&#259;',
       'attribTo': 'de la'
     },
     'ru': {
       'seeOn': '&#1055;&#1086;&#1089;&#1084;&#1086;&#1090;&#1088;&#1077;&#1090;&#1100; &#1074;',
-      'getThis': '&#1087;&#1086;&#1083;&#1091;&#1095;&#1080;&#1090;&#1100;',
       'attribTo': '&#1087;&#1086;&#1083;&#1100;&#1079;&#1086;&#1074;&#1072;&#1090;&#1077;&#1083;&#1077;&#1084;'
     },
     'tl': {
       'seeOn': 'tingnan sa',
-      'getThis': 'kunin',
       'attribTo': ''
     },
     'th': {
       'seeOn': '&#3604;&#3641;&#3651;&#3609;',
-      'getThis': '&#3619;&#3633;&#3610;&#3626;&#3636;&#3656;&#3591;&#3609;&#3637;&#3657;',
       'attribTo': '&#3648;&#3586;&#3637;&#3618;&#3609;&#3650;&#3604;&#3618;'
     },
     'sk': {
       'seeOn': 'Zobrazi&#357; na',
-      'getThis': 'stiahnu&#357;',
       'attribTo': 'od'
     },
     'sv': {
       'seeOn': 'Visa p&#229;',
-      'getThis': 'H&#228;mta',
       'attribTo': 'av'
     },
     'tr': {
       'seeOn': '&#220;zerinde g&#246;r',
-      'getThis': 'bunu al&#305;n',
       'attribTo': 'taraf&#305;ndan'
     },
     'ua': {
       'seeOn': '&#1076;&#1080;&#1074;&#1110;&#1090;&#1100;&#1089;&#1103; &#1085;&#1072;',
-      'getThis': '&#1086;&#1090;&#1088;&#1080;&#1084;&#1072;&#1081;&#1090;&#1077; &#1094;&#1077;',
       'attribTo': '&#1086;&#1087;&#1080;&#1089;'
     },
     'vi': {
       'seeOn': 'xem tr&ecirc;n',
-      'getThis': 'l&#7845;y c&aacute;i n&agrave;y',
       'attribTo': '&#273;&#432;a v&agrave;o'
     }
   },
@@ -1796,11 +1808,14 @@
 
     // PIN IT BUTTON -- 20px
 
-    'a._pin_it_button_20 { cursor: pointer; background-repeat: none; background-size: 40px 60px; height: 20px; margin: 0; padding: 0; vertical-align: baseline; text-decoration: none; width: 40px; background-position: 0 -20px }',
+    'a._pin_it_button_20 { cursor: pointer; background-repeat: none; background-size: 40px 60px; height: 20px; padding: 0; vertical-align: baseline; text-decoration: none; width: 40px; background-position: 0 -20px }',
     'a._pin_it_button_20:hover { background-position: 0 0px }',
     'a._pin_it_button_20:active, a._pin_it_button_20._hazClick { background-position: 0 -40px }',
     'a._pin_it_button_inline_20 { cursor: pointer; position: relative; display: inline-block; }',
     'a._pin_it_button_floating_20 { cursor: pointer; position: absolute; }',
+
+    // some space for count
+    'a._pin_it_beside_20_pad { margin-right: 45px; }',
 
     // background images
     'a._pin_it_button_en_20_red { background-image: url(_cdn/images/pidgets/pinit_bg_en_rect_red_20__rez.png); }',
@@ -1821,11 +1836,14 @@
 
     // PIN IT BUTTON -- 28px
 
-    'a._pin_it_button_28 { cursor: pointer; background-repeat: none; background-size: 56px 84px; height: 28px; margin: 0; padding: 0; vertical-align: baseline; text-decoration: none; width: 56px; background-position: 0 -28px }',
+    'a._pin_it_button_28 { cursor: pointer; background-repeat: none; background-size: 56px 84px; height: 28px; padding: 0; vertical-align: baseline; text-decoration: none; width: 56px; background-position: 0 -28px }',
     'a._pin_it_button_28:hover { background-position: 0 0px }',
     'a._pin_it_button_28:active, a._pin_it_button_28._hazClick { background-position: 0 -56px }',
     'a._pin_it_button_inline_28 { cursor: pointer; position: relative; display: inline-block; }',
     'a._pin_it_button_floating_28 { cursor: pointer; position: absolute; }',
+
+    // some space for count
+    'a._pin_it_beside_28_pad { margin-right: 50px;}',
 
     // background images
     'a._pin_it_button_en_28_red { background-image: url(_cdn/images/pidgets/pinit_bg_en_rect_red_28__rez.png); }',
@@ -1887,48 +1905,43 @@
     // EMBEDDED PIN
 
     // main container
-    'span._embed_pin { cursor: pointer; display: inline-block; text-align: center; width: 237px; overflow: hidden; vertical-align: top; }',
+    'span._embed_pin { -webkit-font-smoothing: antialiased; cursor: pointer; display: inline-block; text-align: center; width: 237px; overflow: hidden; vertical-align: top; }',
 
     // shadow and rounded corner
-    'span._embed_pin._fancy { background: #fff; box-shadow: 0 0 3px #aaa; border-radius: 3px; }',
+    'span._embed_pin._fancy { background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .33); border-radius: 3px; }',
 
     // thumbnail link has relative position
     'span._embed_pin a._embed_pin_link { display: block;  margin: 0 auto; padding: 0; position: relative;  line-height: 0}',
 
-    // images should never show a border
-    'span._embed_pin img { border: 0; margin: 0; padding: 0;}',
+    // border under images separate white backgrounds from main body
+    'span._embed_pin img._embed_pin_link_img { border: 0; margin: 0; padding: 0; border-bottom: 1px solid rgba(0, 0, 0, .09);}',
 
     // repin button
-    'span._embed_pin a._embed_pin_link i._repin { left: 10px; top: 10px; position: absolute; height: 33px; width: 64px; background-size: 64px 99px; background: transparent url(_cdn/images/pidgets/repin_rez.png) }',
-    'span._embed_pin a._embed_pin_link i._repin_ja { left: 10px; top: 10px; position: absolute; height: 33px; width: 64px; background-size: 64px 99px; background: transparent url(_cdn/images/pidgets/ja_repin_rez.png) }',
+    'span._embed_pin a._embed_pin_link i._repin { left: 12px; top: 12px; position: absolute; height: 20px; width: 40px; background-size: 40px 60px;  background: transparent url(_cdn/images/pidgets/pinit_bg_en_rect_red_20__rez.png) }',
+    'span._embed_pin a._embed_pin_link i._repin_ja { left: 12px; top: 12px; position: absolute; height: 20px; width: 40px; background-size: 40px 60px; background: transparent url(_cdn/images/pidgets/pinit_bg_ja_rect_red_20__rez.png) }',
+    'span._embed_pin a._embed_pin_link i._repin:hover, span._embed_pin a._embed_pin_link i._repin_ja:hover { background-position: 0 -20px; }',
+    'span._embed_pin a._embed_pin_link i._repin._hazClick, span._embed_pin a._embed_pin_link i._repin_ja._hazClick { background-position: 0 -40px; }',
 
-    'span._embed_pin a._embed_pin_link i._repin:hover { background-position: 0 -33px; }',
-    'span._embed_pin a._embed_pin_link i._repin._hazClick { background-position: 0 -66px; }',
-
-    // "get this" hoverbutton
-    'span._embed_pin a._embed_pin_link i._getThis { display: none }',
-    'span._embed_pin a._embed_pin_link:hover i._getThis, span._embed_pin a._embed_pin_link:hover i._getThis i { background: transparent url(_cdn/images/pidgets/bfs1.png) }',
-
-    // text container and hover state
-    'span._embed_pin a._embed_pin_link:hover i._getThis { color: #555; display: inline-block; font: normal normal normal 11px/20px "Helvetica Neue",helvetica,arial,san-serif; height: 20px; margin: 0; padding: 0 1px 0 5px; position: absolute; bottom: 10px; right: 10px; text-decoration: none;  }',
-    'span._embed_pin a._embed_pin_link:hover i._getThis:hover { background-position: 0 -20px }',
-
-    // end cap and hover state
-    'span._embed_pin a._embed_pin_link:hover i._getThis i { position: absolute; top: 0; right: -4px; height: 20px; width: 5px; background-position: 100% 0px }',
-    'span._embed_pin a._embed_pin_link:hover i._getThis:hover i { background-position: 100% -20px }',
+    // play button for animated GIFs
+    'span._embed_pin a._embed_pin_link i._play { display: block; width: 50px; white-space: pre; font-family: "Helvetica Neue",helvetica,arial,san-serif; font-weight: bold; font-style: normal; font-size: 9px; line-height: 12px; margin: 0; position: absolute; bottom: 12px; left: 12px; text-decoration: none; background: rgba(0, 0, 0, .4); color: rgba(255, 255, 255, 1); border-radius: 13px; padding: 5px 0; box-shadow: 0 0 2px rgba(0, 0, 0, .2); border: 2px solid rgba(255, 255, 255, .68);}',
+    'span._embed_pin a._embed_pin_link i._play:hover { background: rgba(0, 0, 0, .8); color: #fff; }',
 
     // description and attribution blocks
-    'span._embed_pin span._embed_pin_desc { color: #333; white-space: normal; border-bottom: 1px solid #eee; display: block; font-family: "Helvetica Neue", arial, sans-serif; font-size: 12px; line-height: 17px; padding: 10px; text-align: left; }',
-
-    'span._embed_pin span._embed_pin_attrib, span._embed_pin span._embed_pin_text_container { color: #a7a7a7; font-family: "Helvetica", sans-serif; font-size: 10px; line-height: 18px; font-weight: bold; display: block;}',
-    'span._embed_pin span._embed_pin_attrib img._embed_pin_attrib_icon { height: 16px; width: 16px; vertical-align: middle; margin-right: 5px; float: left;}',
-    'span._embed_pin span._embed_pin_attrib a { color: #a7a7a7; text-decoration: none;}',
-
-    'span._embed_pin a._embed_pin_text, span._embed_pin a._embed_pin_text span._embed_pin_text_container { position: relative; text-decoration: none; display: block; font-weight: bold; color: #b7b7b7; font-family: "Helvetica Neue", arial, sans-serif; font-size: 11px; line-height: 14px; height: 39px; text-align: left; }',
-    'span._embed_pin a._embed_pin_text { padding: 5px 0 0 7px; }',
+    'span._embed_pin span._embed_pin_desc { color: #363636; white-space: normal; border-bottom: 1px solid rgba(0, 0, 0, .09);; display: block; font-family: "Helvetica Neue", arial, sans-serif; font-size: 13px; line-height: 17px; padding: 12px; text-align: left; }',
+    'span._embed_pin span._embed_pin_attrib { color: #a8a8a8; font-family: "Helvetica Neue", sans-serif; font-size: 11px; line-height: 18px; margin-top: 12px; font-weight: bold; display: block;}',
+    'span._embed_pin span._embed_pin_attrib img._embed_pin_attrib_icon { height: 16px; width: 16px; vertical-align: middle; padding: 0; margin: 0 5px 0 0; float: left;}',
+    'span._embed_pin span._embed_pin_attrib a { color: #a8a8a8; text-decoration: none;}',
+    'span._embed_pin span._embed_pin_stats { display: block; }',
+    'span._embed_pin span._embed_pin_stats span._embed_pin_stats_repin_count, span._embed_pin span._embed_pin_stats span._embed_pin_stats_like_count { display: inline-block; padding-left: 17px; padding-right: 10px; color: #a8a8a8; font-family: "Helvetica Neue", sans-serif; font-size: 11px; line-height: 12px; margin-top: 12px; font-weight: bold; }',
+    'span._embed_pin span._embed_pin_stats span._embed_pin_stats_repin_count { background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAALCAAAAABq7uO+AAAASklEQVQI10WNMQrAMBRCvf/Z3pQcImPplsIPdqhNXOSJqLxVtnWQsuUO9IM3cHlV8dSSDZQHAOPH2YA2FU+qtH7MRhaVh/xt/PQCEW6N4EV+CPEAAAAASUVORK5CYII=) 0 0 no-repeat; }',
+    'span._embed_pin span._embed_pin_stats span._embed_pin_stats_like_count { background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAKCAAAAAClR+AmAAAAUElEQVR4AT2HMQpFIQwEc/+zbXhFLBW8QUihIAT2E8Q/xe6M0Jv2zK7NKUcBzAlAjzjqtdZl4c8S2nOjMPS6BoWMr/wLVnAbYJs3mGMkXzx+OeRqUf5HHRoAAAAASUVORK5CYII=) 0 2px no-repeat; }',
+    'span._embed_pin a._embed_pin_text { padding: 12px; position: relative; text-decoration: none; display: block; font-weight: bold; color: #b7b7b7; font-family: "Helvetica Neue", arial, sans-serif; font-size: 11px; line-height: 14px; height: 30px; text-align: left; }',
     'span._embed_pin a._embed_pin_text:hover { background: #eee;}',
-    'span._embed_pin a._embed_pin_text img._embed_pin_text_avatar { border-radius: 2px; overflow: hidden; height: 30px; width: 30px; vertical-align: middle; margin-right: 5px; float: left;}',
-    'span._embed_pin a._embed_pin_text span._embed_pin_text_container em._embed_pin_text_container_em { font-family: inherit; display: block; color: #717171; font-style: normal; width: 180px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }',
+    'span._embed_pin a._embed_pin_text img._embed_pin_text_avatar { border-radius: 15px; overflow: hidden; height: 30px; width: 30px; vertical-align: middle; margin: 0 8px 12px 0; float: left;}',
+    'span._embed_pin a._embed_pin_text span._embed_pin_text_container_pinner, span._embed_pin a._embed_pin_text span._embed_pin_text_container_board { display: block; width: 175px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}',
+    'span._embed_pin a._embed_pin_text span._embed_pin_text_container_pinner { color: #777;}',
+
+    // shield
     'span._embed_pin a._embed_pin_text b._embed_pin_link_shield { position: absolute; top: 0; left: 0; height: 100%; width: 100%; }',
 
 
