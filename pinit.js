@@ -27,4 +27,4 @@
     }, 10);
 
   }
-}(window, document, '//assets.pinterest.com/js/pinit_main.js'));
+}(window, document, '//constellationco.com/wp-content/themes/constellation-site/library/js/libs/pinterest/pinit_main.js'));
