@@ -1,6 +1,6 @@
 /* jshint indent: false, maxlen: false */
 
-// fix Japanese background-size attribute for embedded pin widget
+// sites that only have hoverbuttons get analytics
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -231,6 +231,11 @@
             'config': $.f.getData(el, 'config') || 'none'
           };
 
+          var id = $.f.getData(el, 'id');
+          if (id && parseInt(id) > 0) {
+            c.id = parseInt(id);
+          }
+
           // shape, size, color
           if (c.shape === 'round') {
             if (c.height !== '16' && c.height !== '32') {
@@ -286,18 +291,27 @@
               buttonClass = $.a.k + '_pin_it_button_en_' + c.height + '_red_round ' + $.a.k + '_pin_it_button_floating_en_' + c.height + '_red_round';
             }
 
-
             // get position, start href
-            var p = $.f.getPos(img), href = $.v.endpoint.create;
-            // set the button href
-            href = href + 'url=' + encodeURIComponent($.d.URL) + '&media=' + encodeURIComponent(img.src) + '&description=' + encodeURIComponent(img.getAttribute('data-pin-description') || img.title || img.alt || $.d.title);
+            var p = $.f.getPos(img), href;
 
-            $.s.floatingButton = $.f.make({'A': {
-              'className': buttonClass,
-              'title': 'Pin it!',
-              'data-pin-log': 'button_pinit_floating',
-              'data-pin-href': href
-            }});
+            if (c.id) {
+              href = $.v.endpoint.repin.replace(/%s/, c.id);
+              $.s.floatingButton = $.f.make({'A': {
+                'className': buttonClass,
+                'title': 'Pin it!',
+                'data-pin-log': 'button_pinit_floating_repin',
+                'data-pin-href': href
+              }});
+            } else {
+              // set the button href
+              href = $.v.endpoint.create + 'guid=' + $.v.guid + '&url=' + encodeURIComponent($.d.URL) + '&media=' + encodeURIComponent(img.src) + '&description=' + encodeURIComponent(img.getAttribute('data-pin-description') || img.title || img.alt || $.d.title);
+              $.s.floatingButton = $.f.make({'A': {
+                'className': buttonClass,
+                'title': 'Pin it!',
+                'data-pin-log': 'button_pinit_floating',
+                'data-pin-href': href
+              }});
+            }
 
             $.d.b.appendChild($.s.floatingButton);
 
@@ -380,14 +394,8 @@
                       }
                       // found valid URLs?
                       if (q.url && q.url.match(/^http/i) && q.media && q.media.match(/^http/i)) {
-                        // yes
-                        if (!$.v.config.shallow && typeof $.f.deepLink[$.v.deepBrowser] === 'function') {
-                          // attempt to deep link
-                          $.f.deepLink[$.v.deepBrowser](href);
-                        } else {
-                          // pop the pin form
-                          $.w.open(href, 'pin' + new Date().getTime(), $.a.pop);
-                        }
+                        // pop the pin form
+                        $.w.open(href, 'pin' + new Date().getTime(), $.a.pop);
                       } else {
                         // log an error
                         $.f.log('&type=config_error&error_msg=invalid_url&href=' + encodeURIComponent($.d.URL));
@@ -403,17 +411,24 @@
 
                     // pop pin create dialog
                     case 'button_pinit_floating':
+                    case 'button_pinit_floating_repin':
                       $.w.open(href, 'pin' + new Date().getTime(), $.a.pop);
                       $.f.hideFloatingButton();
                       $.v.hazFloatingButton = false;
                     break;
 
                     // pop repin dialog
+                    case 'button_pinit_repin':
                     case 'embed_pin':
                     case 'embed_pin_repin':
                     case 'embed_board_thumb':
                     case 'embed_user_thumb':
-                      $.w.open(href, 'pin' + new Date().getTime(), $.a.popLarge);
+                      $.w.open(href, 'pin' + new Date().getTime(), $.a.pop);
+                    break;
+
+                    // follow button
+                    case 'button_follow':
+                      $.w.open(href, 'pin' + new Date().getTime(), $.a.popHuge);
                     break;
 
                     // open href in new page
@@ -423,7 +438,7 @@
                     case 'embed_user_hd':
                     case 'embed_board_ft':
                     case 'embed_user_ft':
-                    case 'button_follow':
+                    case 'button_follow_auto':
                       $.w.open(href, '_blank');
                     break;
 
@@ -455,6 +470,7 @@
           // add a single event listener to the body for minimal impact
           $.f.listen($.d.b, 'click', $.f.click);
           if ($.v.config.hover) {
+            $.v.countButton = $.v.countButton + 1;
             $.d.b.setAttribute('data-pin-hover', true);
             $.f.listen($.d.b, 'mouseover', $.f.over);
           }
@@ -1048,55 +1064,6 @@
           return str;
         },
 
-        // deep link to Pinterest apps
-        deepLink: {
-          ios_safari: function (href) {
-            var shallow, deep, start, count, amount, delay, watchForError;
-
-            // link target points to pin/create/button/?url=foo&media=bar
-            shallow = href;
-
-            // make the deep-link URL
-            deep = shallow.split('?')[1];
-            deep = deep.replace(/url=/, 'source_url=');
-            deep = deep.replace(/media=/, 'image_url=');
-            deep = 'pinit://pinit/?' + deep;
-
-            // start the clock ticking
-            start = new Date().getTime();
-            count = 0;
-            amount = 10;
-            delay = 80;
-
-            // watch for the clock to fall out of sync, meaning Safari can't find the app
-            watchForError = function () {
-              $.w.setTimeout(function () {
-                if (count < amount) {
-                  // keep watching
-                  watchForError();
-                } else {
-                  // is our clock out of sync?
-                  var since = start + (count * delay);
-                  var now = new Date().getTime();
-                  var diff = (now - since) / amount;
-                  // yes: Safari has tried to pop the app but failed
-                  if (diff < delay) {
-                    // send us over to pin/create/button (dismisses error pop-up)
-                    $.w.top.location = shallow;
-                  }
-                }
-                count = count + 1;
-              }, delay);
-            };
-
-            // attempt to pop the Pinterest application
-            $.w.location = deep;
-
-            // if we're still here, start watching the clock
-            watchForError();
-          }
-        },
-
         render: {
           buttonBookmark: function (el) {
             $.f.debug('build bookmarklet button');
@@ -1166,9 +1133,9 @@
               q.description = encodeURIComponent($.d.title || '');
             }
 
-            href = $.v.endpoint.create + 'url=' + q.url + '&media=' + q.media + '&guid=' + $.v.guid + '-' + $.v.buttonId + '&description=' + q.description;
             $.v.buttonId = $.v.buttonId + 1;
 
+            href = $.v.endpoint.create + 'guid=' + $.v.guid + '-' + $.v.buttonId + '&url=' + q.url + '&media=' + q.media + '&description=' + q.description;
 
             var a = $.f.make({'A': {
               'className': buttonClass,
@@ -1176,24 +1143,32 @@
               'data-pin-log': 'button_pinit'
             }});
 
+            // always show zero count?
             if ($.f.getData(el, 'zero') || $.v.config.zero) {
               $.f.set(a, $.a.dataAttributePrefix + 'zero', true);
             }
 
             var config = $.f.getData(el, 'config');
+
+            // count position / visibility
             if ($.a.config.pinItCountPosition[config] === true) {
               $.f.set(a, $.a.dataAttributePrefix + 'config', config);
               a.className = a.className + ' ' + $.a.k + '_pin_it_' + c.config + '_' + c.height;
-
               if (c.pad) {
                 a.className = a.className + ' ' + $.a.k + '_pin_it_' + c.config + '_' + c.height + '_pad';
               }
-
             } else {
               a.className = a.className + ' ' + $.a.k + '_pin_it_none';
             }
 
-            // prevent old bad buttons from throwing errors
+            // overwrite if we have a pin ID
+            if (c.id && q.media) {
+              $.f.set(a, 'data-pin-log', 'button_pinit_repin');
+              $.f.set(a, 'data-pin-id', c.id);
+              $.f.set(a, 'data-pin-href', $.v.endpoint.repin.replace(/%s/, c.id) + '?media=' + q.media);
+            }
+
+            // get pin count only if there's an URL
             if (q.url) {
               if (c.shape === 'rect') {
                 var span = $.f.make({'SPAN': {'className': $.a.k + '_hidden', 'id': $.a.k + '_pin_count_' + $.f.callback.length, 'innerHTML': '<i></i>'}});
@@ -1208,19 +1183,41 @@
           buttonFollow: function (el) {
             $.f.debug('build follow button');
             var className = '_follow_me_button';
-            var render = $.f.getData(el, 'render');
-            if (render) {
-              className = className + '_' + render;
+
+            // allow for tall buttons
+            var h = $.f.getData(el, 'height') || $.v.config.height || 0;
+            if (h === '28') {
+              className = className + '_28';
             }
+
             var a = $.f.make({'A': {
               'className': $.a.k + className,
               'innerHTML': el.innerHTML,
-              'data-pin-href': el.href,
-              'data-pin-log': 'button_follow'
+              'data-pin-href': el.href + '?guid=' + $.v.guid + '-' + $.v.buttonId
             }});
+
+            if (el.href.match(/\/follow\//)) {
+              // this is an autofollow button; don't mess with it
+              a.setAttribute('data-pin-log', 'button_follow_auto');
+            } else {
+              // this is a new follow button
+              a.setAttribute('data-pin-log', 'button_follow');
+              // add trailing slash if not found
+              if (!el.href.match(/\/$/)) {
+                el.href = el.href + '/';
+              }
+              // fix old URLs to point to /pins/follow/
+              if (!el.href.match(/pins\/follow\/$/)) {
+                // add pins/follow/
+                el.href = el.href + 'pins/follow/';
+              }
+              a.setAttribute('data-pin-href', el.href + '?guid=' + $.v.guid + '-' + $.v.buttonId);
+            }
+
             a.appendChild($.f.make({'B': {}}));
             a.appendChild($.f.make({'I': {}}));
             $.f.replace(el, a);
+            $.v.buttonId = $.v.buttonId + 1;
             $.v.countFollow = $.v.countFollow + 1;
           },
           embedPin: function (el) {
@@ -1459,7 +1456,6 @@
             'strings': $.a.strings.en,
             'guid': '',
             'buttonId': 0,
-            'deepBrowser': null,
             'protocol': $.w.location.protocol,
             'userAgent': $.w.navigator.userAgent,
             'countButton': 0,
@@ -1477,14 +1473,6 @@
           // prepend protocol to endpoints so testing from file:// works
           for (var e in $.a.endpoint) {
             $.a.endpoint[e] = $.v.protocol + $.a.endpoint[e];
-          }
-
-          // are we using an IOS device?
-          if ($.v.userAgent.match(/iP/) !== null) {
-            // we're on an IOS device. Don't deep link from inside the Pinterest app or Chrome.
-            if ($.v.userAgent.match(/Pinterest/) === null && $.v.userAgent.match(/CriOS/) === null) {
-              $.v.deepBrowser = 'ios_safari';
-            }
           }
 
           // are we using IE?
@@ -1604,10 +1592,11 @@
   'countSource': 6,
   'dataAttributePrefix': 'data-pin-',
   // valid config parameters
-  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc', 'shallow', 'zero', 'color', 'height', 'lang', 'shape'],
+  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc', 'zero', 'color', 'height', 'lang', 'shape'],
   // configuration for the pop-up window
-  'pop': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=632,height=270,left=0,top=0',
+  'pop': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=750,height=320,left=0,top=0',
   'popLarge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=900,height=500,left=0,top=0',
+  'popHuge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=1040,height=640,left=0,top=0',
   // secure and non-secure content distribution networks
   'cdn': {
     'https:': 'https://s-passets.pinimg.com',
@@ -1653,7 +1642,7 @@
     'es': { 'lang': ['es'], 'strings': 'es'},
     'fi': { 'lang': ['fi'], 'strings': 'fi'},
     'fr': { 'lang': ['fr'], 'strings': 'fr'},
-    'gb': { 'lang': ['en-uk', 'en-gb', 'en-ie'], 'strings': 'en'},
+    'uk': { 'lang': ['en-uk', 'en-gb', 'en-ie'], 'strings': 'en'},
     'gr': { 'lang': ['el'], 'strings': 'el'},
     'hu': { 'lang': ['hu'], 'strings': 'hu'},
     'id': { 'lang': ['id', 'in'], 'strings': 'id'},
@@ -1873,8 +1862,8 @@
     // FOLLOW ME ON PINTEREST BUTTON
 
     // background images (last selector) have no semicolon, so they don't get an !important
-    'a._follow_me_button, a._follow_me_button i { cursor: pointer; background-size: 200px 60px; background: transparent url(_cdn/images/pidgets/bfs_rez.png) 0 0 no-repeat }',
-    'a._follow_me_button { color: #444; display: inline-block; font: bold normal normal 11px/20px "Helvetica Neue",helvetica,arial,san-serif; height: 20px; margin: 0; padding: 0; position: relative; text-decoration: none; text-indent: 19px; vertical-align: baseline;}',
+    'a._follow_me_button, a._follow_me_button i { background-size: 200px 60px; background: transparent url(_cdn/images/pidgets/bfs_rez.png) 0 0 no-repeat }',
+    'a._follow_me_button { cursor: pointer; color: #444; display: inline-block; font: bold normal normal 11px/20px "Helvetica Neue",helvetica,arial,san-serif; height: 20px; margin: 0; padding: 0; position: relative; text-decoration: none; text-indent: 19px; vertical-align: baseline;}',
     'a._follow_me_button:hover { background-position: 0 -20px}',
     'a._follow_me_button:active  { background-position: 0 -40px}',
 
@@ -1889,18 +1878,18 @@
     // TALL VERSION OF FOLLOW ME ON PINTEREST BUTTON
 
     // background images (last selector) have no semicolon, so they don't get an !important
-    'a._follow_me_button_tall, a._follow_me_button_tall i { background-size: 400px 84px; background: transparent url(_cdn/images/pidgets/bft_rez.png) 0 0 no-repeat }',
-    'a._follow_me_button_tall { color: #444; display: inline-block; font: bold normal normal 13px/28px "Helvetica Neue",helvetica,arial,san-serif; height: 28px; margin: 0; padding: 0; position: relative; text-decoration: none; text-indent: 33px; vertical-align: baseline;}',
-    'a._follow_me_button_tall:hover { background-position: 0 -28px}',
-    'a._follow_me_button_tall:active  { background-position: 0 -56px}',
+    'a._follow_me_button_28, a._follow_me_button_28 i { background-size: 400px 84px; background: transparent url(_cdn/images/pidgets/bft_rez.png) 0 0 no-repeat }',
+    'a._follow_me_button_28 { cursor: pointer; color: #444; display: inline-block; font: bold normal normal 13px/28px "Helvetica Neue",helvetica,arial,san-serif; height: 28px; margin: 0; padding: 0; position: relative; text-decoration: none; text-indent: 33px; vertical-align: baseline;}',
+    'a._follow_me_button_28:hover { background-position: 0 -28px}',
+    'a._follow_me_button_28:active  { background-position: 0 -56px}',
 
     // b = logo
-    'a._follow_me_button_tall b { position: absolute; top: 5px; left: 10px; height: 18px; width: 18px; background-size: 18px 18px; background-image: url(_cdn/images/pidgets/smt_rez.png); }',
+    'a._follow_me_button_28 b { position: absolute; top: 5px; left: 10px; height: 18px; width: 18px; background-size: 18px 18px; background-image: url(_cdn/images/pidgets/smt_rez.png); }',
 
     // i = right cap
-    'a._follow_me_button_tall i { position: absolute; top: 0; right: -10px; height: 28px; width: 10px; background-position: 100% 0px; }',
-    'a._follow_me_button_tall:hover i { background-position: 100% -28px;  }',
-    'a._follow_me_button_tall:active i { background-position: 100% -56px; }',
+    'a._follow_me_button_28 i { position: absolute; top: 0; right: -10px; height: 28px; width: 10px; background-position: 100% 0px; }',
+    'a._follow_me_button_28:hover i { background-position: 100% -28px;  }',
+    'a._follow_me_button_28:active i { background-position: 100% -56px; }',
 
     // EMBEDDED PIN
 
