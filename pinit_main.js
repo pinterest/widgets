@@ -233,7 +233,7 @@
 
           var id = $.f.getData(el, 'id');
           if (id && parseInt(id) > 0) {
-            c.id = parseInt(id);
+            c.id = id;
           }
 
           // shape, size, color
