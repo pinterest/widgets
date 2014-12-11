@@ -1,6 +1,6 @@
 /* jshint indent: false, maxlen: false */
 
-// catch all non-http/https protocols, not just file://
+// catch data-pin attributes for hoverbuttons
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -28,6 +28,11 @@
         getData: function (el, att) {
           att = $.a.dataAttributePrefix + att;
           return $.f.get(el, att);
+        },
+
+        // return the selected text, if any
+        getSelection: function () {
+          return ("" + ($.w.getSelection ? $.w.getSelection() : $.d.getSelection ? $.d.getSelection() : $.d.selection.createRange().text)).replace(/(^\s+|\s+$)/g, "");
         },
 
         // set a DOM property or text attribute
@@ -304,7 +309,10 @@
               }});
             } else {
               // set the button href
-              href = $.v.endpoint.create + 'guid=' + $.v.guid + '&url=' + encodeURIComponent($.d.URL) + '&media=' + encodeURIComponent(img.src) + '&description=' + encodeURIComponent(img.getAttribute('data-pin-description') || img.title || img.alt || $.d.title);
+              href = $.v.endpoint.create + 'guid=' + $.v.guid;
+              href = href + '&url=' + encodeURIComponent($.f.getData(img, 'url') || $.d.URL);
+              href = href + '&media=' + encodeURIComponent($.f.getData(img, 'media') || img.src);
+              href = href + '&description=' + encodeURIComponent($.f.getSelection() || $.f.getData(img, 'description') || img.title || img.alt || $.d.title);
               $.s.floatingButton = $.f.make({'A': {
                 'className': buttonClass,
                 'title': 'Pin it!',
