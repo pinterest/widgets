@@ -1,6 +1,6 @@
 /* jshint indent: false, maxlen: false */
 
-// sites that only have hoverbuttons get analytics
+// catch all non-http/https protocols, not just file://
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -232,7 +232,7 @@
           };
 
           var id = $.f.getData(el, 'id');
-          if (id && parseInt(id) > 0) {
+          if (id) {
             c.id = id;
           }
 
@@ -428,6 +428,8 @@
 
                     // follow button
                     case 'button_follow':
+                      // follow buttons have real hrefs for SEO; prevent default to avoid following
+                      v.preventDefault();
                       $.w.open(href, 'pin' + new Date().getTime(), $.a.popHuge);
                     break;
 
@@ -1191,6 +1193,8 @@
             }
 
             var a = $.f.make({'A': {
+              // show href in follow button
+              'href': el.href,
               'className': $.a.k + className,
               'innerHTML': el.innerHTML,
               'data-pin-href': el.href + '?guid=' + $.v.guid + '-' + $.v.buttonId
@@ -1465,8 +1469,9 @@
             'countProfile': 0
           };
 
-          // are we testing by dragging a file into a browser?
-          if ($.v.protocol === 'file:') {
+          // help with drag-to-test:
+          // if protocol is not http or https, set it to http
+          if (!$.v.protocol.match(/https?:/)) {
             $.v.protocol = 'http:';
           }
 
