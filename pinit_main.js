@@ -1,6 +1,6 @@
 /* jshint indent: false, maxlen: false */
 
-// catch data-pin attributes for hoverbuttons
+// move all endpoints / CDNs to https
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -142,7 +142,7 @@
           css = $.f.make({'STYLE': {'type': 'text/css'}});
 
           // suspenders AND belt; if some weird protocol sneaks through, default to http
-          cdn = $.a.cdn[$.v.protocol] || $.a.cdn['http:'];
+          cdn = $.a.cdn['https:'];
 
           rules = $.a.rules.join('\n');
 
@@ -367,32 +367,34 @@
         click: function (v) {
 
           v = v || $.w.event;
-          var el, log, pinId;
+          var el, log, pinId, href;
           el = $.f.getEl(v);
-          if (el) {
 
-            // log this click
+          if (el) {
             log = $.f.getData(el, 'log');
             if (log) {
-
+              // log this click
               if (log === 'embed_pin_play') {
+                // play or pause animated GIF
                 var img = el.parentNode.getElementsByTagName('IMG')[0];
                 if (el.innerHTML !== 'II GIF') {
                   el.innerHTML = 'II GIF';
-                  img.src = img.src.replace(/237x/, 'originals');
+                  $.f.set(el, 'data-pin-pause', img.src);
+                  img.src = img.src.replace(/(237x|345x)/, 'originals');
                 } else {
                   el.innerHTML = '&#9654; GIF';
-                  img.src = img.src.replace(/originals/, '237x');
+                  img.src = $.f.getData(el, 'pause');
                 }
               } else {
-                var href = $.f.getData(el, 'href');
+                // check for data-pin-href
+                href = $.f.getData(el, 'href');
                 if (href) {
+                  // this is a data-pin link
                   $.f.log('&type=' + log + '&href=' + encodeURIComponent(href));
                   // gray out any clickable thing
                   if (!el.className.match(/hazClick/)) {
                     el.className = el.className + ' ' + $.a.k + '_hazClick';
                   }
-
                   switch (log) {
                     case 'button_pinit':
                       var q = $.f.parse(href, {'url': true, 'media': true, 'description': true});
@@ -443,6 +445,7 @@
 
                     // open href in new page
                     case 'embed_pin_pinner':
+                    case 'embed_pin_board':
                     case 'embed_pin_img':
                     case 'embed_board_hd':
                     case 'embed_user_hd':
@@ -455,13 +458,16 @@
                     default:
                     break;
                   }
+                } else {
+                  // check for SEO href
+                  href = $.f.get(el, 'href');
+                  if (href) {
+                    $.f.log('&type=' + log + '&href=' + encodeURIComponent(href));
+                  }
                 }
               }
-
             }
-
           }
-
         },
 
         filter: function (str) {
@@ -489,7 +495,7 @@
           var cleanLog = function () {
             var s = $.d.getElementsByTagName('SCRIPT');
             for (var i = 0, n = s.length; i < n; i = i + 1) {
-              if (s[i] && s[i].src && s[i].src.match(/^https?:\/\/logc?\.pinterest\.com/)) {
+              if (s[i] && s[i].src && s[i].src.match(/^https?:\/\/log\.pinterest\.com/)) {
                 $.f.kill(s[i]);
               }
             }
@@ -583,6 +589,8 @@
             }});
             img.style.height = scale.height + 'px';
             img.style.width = scale.width + 'px';
+            img.style.minHeight = scale.height + 'px';
+            img.style.minWidth = scale.width + 'px';
             img.style.marginTop = 0 - (scale.height / $.a.tile.style.margin) + 'px';
             if (scale.height > scaleFactors.height) {
               scale.height = scaleFactors.height;
@@ -629,10 +637,13 @@
           var avatar = $.f.make({'A': {
             'className': $.a.k + '_avatar',
             'data-pin-log': log,
-            'data-pin-href': go
+            'href': go,
+            'target': '_blank'
           }});
 
           var img = $.f.make({'IMG': {
+            'alt': $.f.filter(r.data.user.full_name),
+            'title': $.f.filter(r.data.user.full_name),
             'src': r.data.user.image_small_url.replace(/_30.jpg/, '_60.jpg')
           }});
 
@@ -828,48 +839,72 @@
                   'data-pin-href': $.v.endpoint.repin.replace(/%s/, pin.id)
                 }});
 
-                var img = $.f.make({'IMG': {
-                  'className': $.a.k + '_embed_pin_link_img',
-                  'alt': pin.description,
-                  'data-pin-nopin': 'true',
-                  'src': thumb.url,
-                  'width': thumb.width,
-                  'height': thumb.height,
-                  'data-pin-log': 'embed_pin_img',
-                  'data-pin-href': $.v.endpoint.pinterest + '/pin/' + pin.id + '/'
-                }});
-
-                img.style.width = thumb.width + 'px';
-                img.style.height = thumb.height + 'px';
-                link.appendChild(img);
-
-                // pin it button
-                var rpc = $.a.k + '_repin';
-
-                // gross hack
-                if (lang === 'ja') {
-                  rpc = rpc + '_ja';
+                // is data-pin-width set to large?
+                width = $.f.getData(parent, 'width');
+                if (width === 'large') {
+                  thumb.url = thumb.url.replace(/237x/, '345x');
+                  thumb.height = ~~(thumb.height * 1.4556);
+                  thumb.width = 345;
+                  container.className = container.className + ' ' + $.a.k + '_large';
                 }
 
-                var repin = $.f.make({'I': {
-                  'className': rpc,
-                  'data-pin-id': pin.id,
-                  'data-pin-log': 'embed_pin_repin',
-                  'data-pin-href': $.v.endpoint.repin.replace(/%s/, pin.id)
-                }});
-
-                link.appendChild(repin);
-
-                if (pin.embed && pin.embed.type && pin.embed.type === 'gif') {
-                  var play = $.f.make({'I': {
-                    'className': $.a.k + '_play ' + $.a.k + '_paused',
-                    'innerHTML': '&#9654; GIF',
-                    'data-pin-log': 'embed_pin_play'
+                // embedded media?
+                if (pin.embed && pin.embed.type !== 'gif' && pin.embed.src) {
+                  // nerf several variations of autoplay, autoPlay, true, and 1
+                  embedSrc = pin.embed.src.replace(/autoplay=/i, 'nerfAutoPlay=');
+                  player = $.f.make({'IFRAME': {
+                    'className': $.a.k + '_embed_pin_link_iframe',
+                    'src': embedSrc
                   }});
-                  link.appendChild(play);
-                }
+                  player.width = thumb.width;
+                  player.height = thumb.height;
+                  player.frameBorder = '0';
+                  container.appendChild(player);
+                } else {
+                  img = $.f.make({'IMG': {
+                    'className': $.a.k + '_embed_pin_link_img',
+                    'alt': pin.description,
+                    'data-pin-nopin': 'true',
+                    'src': thumb.url,
+                    'width': thumb.width,
+                    'height': thumb.height,
+                    'data-pin-log': 'embed_pin_img',
+                    'data-pin-href': $.v.endpoint.pinterest + '/pin/' + pin.id + '/'
+                  }});
 
-                container.appendChild(link);
+                  img.style.width = thumb.width + 'px';
+                  img.style.height = thumb.height + 'px';
+                  link.appendChild(img);
+
+                  // pin it button
+                  rpc = $.a.k + '_repin';
+
+                  // Japanese button
+                  if (lang === 'ja') {
+                    rpc = rpc + '_ja';
+                  }
+
+                  // repin button
+                  repin = $.f.make({'I': {
+                    'className': rpc,
+                    'data-pin-id': pin.id,
+                    'data-pin-log': 'embed_pin_repin',
+                    'data-pin-href': $.v.endpoint.repin.replace(/%s/, pin.id)
+                  }});
+
+                  link.appendChild(repin);
+
+                  if (pin.embed && pin.embed.type && pin.embed.type === 'gif') {
+                    play = $.f.make({'I': {
+                      'className': $.a.k + '_play ' + $.a.k + '_paused',
+                      'innerHTML': '&#9654; GIF',
+                      'data-pin-log': 'embed_pin_play'
+                    }});
+                    link.appendChild(play);
+                  }
+
+                  container.appendChild(link);
+                }
 
                 // description
                 var description = $.f.make({'SPAN': {
@@ -932,33 +967,33 @@
 
                   pin.pinner.profile_url = pin.pinner.profile_url.replace('//' + $.a.defaults.domain + '.pinterest.com', $.v.endpoint.pinterest);
 
-                  var pinner = $.f.make({'A': {'className': $.a.k + '_embed_pin_text'}});
+                  var pinner = $.f.make({'SPAN': {
+                    'className': $.a.k + '_embed_pin_text',
+                  }});
 
-                  pinner.appendChild($.f.make({
+                  var avatar = $.f.make({'A':{
+                    'data-pin-log': 'embed_pin_pinner',
+                    'href': pin.pinner.profile_url,
+                    'target': '_blank'
+                  }});
+
+                  avatar.appendChild($.f.make({
                     'IMG': {
                       'className': $.a.k + '_embed_pin_text_avatar',
-                      'src': pin.pinner.image_small_url,
-                      'data-pin-log': 'embed_pin_pinner',
-                      'data-pin-href': pin.pinner.profile_url
+                      'alt': $.f.filter(pin.pinner.full_name),
+                      'title': $.f.filter(pin.pinner.full_name),
+                      'src': pin.pinner.image_small_url
                     }
                   }));
+
+                  pinner.appendChild(avatar);
 
                   pinner.appendChild($.f.make({
                     'SPAN': {
                       'className': $.a.k + '_embed_pin_text_container',
-                      'innerHTML': '<span data-pin-log="embed_pin_pinner" data-pin-href="' + pin.pinner.profile_url + '" class="' + $.a.k + '_embed_pin_text_container_pinner">' + $.f.filter(pin.pinner.full_name) + '</span><span class="' + $.a.k + '_embed_pin_text_container_board">' + $.f.filter(pin.board.name) + '</span>',
-                      'data-pin-log': 'embed_pin_pinner',
-                      'data-pin-href': pin.pinner.profile_url
+                      'innerHTML': '<span data-pin-log="embed_pin_pinner" data-pin-href="' + pin.pinner.profile_url + '" class="' + $.a.k + '_embed_pin_text_container_pinner">' + $.f.filter(pin.pinner.full_name) + '</span><span data-pin-log="embed_pin_board" data-pin-href="' + $.v.endpoint.pinterest + pin.board.url + '" class="' + $.a.k + '_embed_pin_text_container_board">' + $.f.filter(pin.board.name) + '</span>'
                     }
                   }));
-
-                  var pinnerShield = $.f.make({'B':{
-                    'className': $.a.k + '_embed_pin_link_shield',
-                    'data-pin-log': 'embed_pin_pinner',
-                    'data-pin-href': pin.pinner.profile_url
-                  }});
-
-                  pinner.appendChild(pinnerShield);
 
                   container.appendChild(pinner);
                 }
@@ -1341,21 +1376,12 @@
 
           $.w.setTimeout(function () {
             var str = '&type=pidget&sub=' + $.v.config.domain + '&button_count=' + $.v.countButton + '&follow_count=' + $.v.countFollow + '&pin_count=' + $.v.countPin + '&profile_count=' + $.v.countProfile + '&board_count=' + $.v.countBoard;
-            if (typeof $.v.config.logc === 'string') {
-              $.f.log(str + '&logc=' + $.v.config.logc, $.a.endpoint.logc);
-            } else {
-              $.f.log(str);
-            }
+            $.f.log(str);
           }, 1000);
         },
 
         // send logging information
-        log: function (str, endpoint) {
-
-            // if we have not specified a special logging endpoint, use default
-            if (!endpoint) {
-              endpoint = $.a.endpoint.log;
-            }
+        log: function (str) {
 
             // query always starts with guid
             var query = '?guid=' + $.v.guid;
@@ -1368,7 +1394,7 @@
             // add the page we're looking at right now
             query = query + '&via=' + encodeURIComponent($.v.here);
 
-            $.f.call(endpoint + query, $.f.ping.log);
+            $.f.call($.a.endpoint.log + query, $.f.ping.log);
         },
 
         // trade a lang for domain and strings
@@ -1468,7 +1494,6 @@
             'strings': $.a.strings.en,
             'guid': '',
             'buttonId': 0,
-            'protocol': $.w.location.protocol,
             'userAgent': $.w.navigator.userAgent,
             'countButton': 0,
             'countFollow': 0,
@@ -1476,17 +1501,6 @@
             'countBoard': 0,
             'countProfile': 0
           };
-
-          // help with drag-to-test:
-          // if protocol is not http or https, set it to http
-          if (!$.v.protocol.match(/https?:/)) {
-            $.v.protocol = 'http:';
-          }
-
-          // prepend protocol to endpoints so testing from file:// works
-          for (var e in $.a.endpoint) {
-            $.a.endpoint[e] = $.v.protocol + $.a.endpoint[e];
-          }
 
           // are we using IE?
           if ($.v.userAgent.match(/MSIE/) !== null) {
@@ -1585,13 +1599,12 @@
   // www.pinterest.com and business.pinterest.com endpoints should be
   // initialized in internationalizeUrls so they use the right international subdomain
   'endpoint': {
-    'bookmark': '//assets.pinterest.com/js/pinmarklet.js',
-    'count': '//widgets.pinterest.com/v1/urls/count.json',
-    'pin': '//widgets.pinterest.com/v3/pidgets/pins/info/',
-    'board': '//widgets.pinterest.com/v3/pidgets/boards/',
-    'user': '//widgets.pinterest.com/v3/pidgets/users/',
-    'log': '//log.pinterest.com/',
-    'logc': '//logc.pinterest.com/'
+    'bookmark': 'https://assets.pinterest.com/js/pinmarklet.js',
+    'count': 'https://widgets.pinterest.com/v1/urls/count.json',
+    'pin': 'https://widgets.pinterest.com/v3/pidgets/pins/info/',
+    'board': 'https://widgets.pinterest.com/v3/pidgets/boards/',
+    'user': 'https://widgets.pinterest.com/v3/pidgets/users/',
+    'log': 'https://log.pinterest.com/'
   },
   'config': {
     'pinItCountPosition': {
@@ -1605,17 +1618,14 @@
   'countSource': 6,
   'dataAttributePrefix': 'data-pin-',
   // valid config parameters
-  'configParam': [ 'build', 'debug', 'style', 'hover', 'logc', 'zero', 'color', 'height', 'lang', 'shape'],
+  'configParam': [ 'build', 'debug', 'style', 'hover', 'zero', 'color', 'height', 'lang', 'shape'],
   // configuration for the pop-up window
   'pop': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=750,height=320,left=0,top=0',
   'popLarge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=900,height=500,left=0,top=0',
   'popHuge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=1040,height=640,left=0,top=0',
   // secure and non-secure content distribution networks
   'cdn': {
-    'https:': 'https://s-passets.pinimg.com',
-    'http:': 'http://passets.pinterest.com',
-    // if we are dragging and dropping to test a page, use http instead of file
-    'file:': 'http://passets.pinterest.com'
+    'https:': 'https://s-passets.pinimg.com'
   },
   // tiled image settings
   'tile': {
@@ -1816,8 +1826,6 @@
     'a._pin_it_button_inline_20 { cursor: pointer; position: relative; display: inline-block; }',
     'a._pin_it_button_floating_20 { cursor: pointer; position: absolute; }',
 
-    // some space for count
-    'a._pin_it_beside_20_pad { margin-right: 45px; }',
 
     // background images
     'a._pin_it_button_en_20_red { background-image: url(_cdn/images/pidgets/pinit_bg_en_rect_red_20__rez.png); }',
@@ -1836,6 +1844,10 @@
     'a._pin_it_beside_20 span._pin_it_button_count i { background-position: 100% 0; position: absolute; top: 0; right: -2px; height: 20px; width: 2px; }',
     'a._pin_it_button_20._pin_it_above { margin-top: 20px; }',
 
+    // some space for count
+    'a._pin_it_above_20_pad { margin-top: 30px; }',
+    'a._pin_it_beside_20_pad { margin-right: 45px; }',
+
     // PIN IT BUTTON -- 28px
 
     'a._pin_it_button_28 { cursor: pointer; background-repeat: none; background-size: 56px 84px; height: 28px; padding: 0; vertical-align: baseline; text-decoration: none; width: 56px; background-position: 0 -28px }',
@@ -1845,6 +1857,7 @@
     'a._pin_it_button_floating_28 { cursor: pointer; position: absolute; }',
 
     // some space for count
+    'a._pin_it_above_28_pad { margin-top: 38px;}',
     'a._pin_it_beside_28_pad { margin-right: 50px;}',
 
     // background images
@@ -1907,7 +1920,11 @@
     // EMBEDDED PIN
 
     // main container
-    'span._embed_pin { -webkit-font-smoothing: antialiased; cursor: pointer; display: inline-block; text-align: center; width: 237px; overflow: hidden; vertical-align: top; }',
+    'span._embed_pin { -webkit-font-smoothing: antialiased; cursor: pointer; display: inline-block; text-align: center; overflow: hidden; vertical-align: top; width: 237px }',
+    'span._embed_pin._large { width: 345px; }',
+
+    // reset styles
+    'span._embed_pin img { border: 0; padding: 0; box-shadow: none; }',
 
     // shadow and rounded corner
     'span._embed_pin._fancy { background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .33); border-radius: 3px; }',
@@ -1937,34 +1954,30 @@
     'span._embed_pin span._embed_pin_stats span._embed_pin_stats_repin_count, span._embed_pin span._embed_pin_stats span._embed_pin_stats_like_count { display: inline-block; padding-left: 17px; padding-right: 10px; color: #a8a8a8; font-family: "Helvetica Neue", sans-serif; font-size: 11px; line-height: 12px; margin-top: 12px; font-weight: bold; }',
     'span._embed_pin span._embed_pin_stats span._embed_pin_stats_repin_count { background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAALCAAAAABq7uO+AAAASklEQVQI10WNMQrAMBRCvf/Z3pQcImPplsIPdqhNXOSJqLxVtnWQsuUO9IM3cHlV8dSSDZQHAOPH2YA2FU+qtH7MRhaVh/xt/PQCEW6N4EV+CPEAAAAASUVORK5CYII=) 0 0 no-repeat; }',
     'span._embed_pin span._embed_pin_stats span._embed_pin_stats_like_count { background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAKCAAAAAClR+AmAAAAUElEQVR4AT2HMQpFIQwEc/+zbXhFLBW8QUihIAT2E8Q/xe6M0Jv2zK7NKUcBzAlAjzjqtdZl4c8S2nOjMPS6BoWMr/wLVnAbYJs3mGMkXzx+OeRqUf5HHRoAAAAASUVORK5CYII=) 0 2px no-repeat; }',
-    'span._embed_pin a._embed_pin_text { padding: 12px; position: relative; text-decoration: none; display: block; font-weight: bold; color: #b7b7b7; font-family: "Helvetica Neue", arial, sans-serif; font-size: 11px; line-height: 14px; height: 30px; text-align: left; }',
-    'span._embed_pin a._embed_pin_text:hover { background: #eee;}',
-    'span._embed_pin a._embed_pin_text img._embed_pin_text_avatar { border-radius: 15px; overflow: hidden; height: 30px; width: 30px; vertical-align: middle; margin: 0 8px 12px 0; float: left;}',
-    'span._embed_pin a._embed_pin_text span._embed_pin_text_container_pinner, span._embed_pin a._embed_pin_text span._embed_pin_text_container_board { display: block; width: 175px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}',
-    'span._embed_pin a._embed_pin_text span._embed_pin_text_container_pinner { color: #777;}',
-
-    // shield
-    'span._embed_pin a._embed_pin_text b._embed_pin_link_shield { position: absolute; top: 0; left: 0; height: 100%; width: 100%; }',
-
+    'span._embed_pin span._embed_pin_text { padding: 12px; position: relative; text-decoration: none; display: block; font-weight: bold; color: #b7b7b7; font-family: "Helvetica Neue", arial, sans-serif; font-size: 11px; line-height: 14px; height: 30px; text-align: left; }',
+    'span._embed_pin span._embed_pin_text img._embed_pin_text_avatar { border-radius: 15px; border: none; overflow: hidden; height: 30px; width: 30px; vertical-align: middle; margin: 0 8px 12px 0; float: left;}',
+    'span._embed_pin span._embed_pin_text span._embed_pin_text_container_pinner, span._embed_pin a._embed_pin_text span._embed_pin_text_container_board { display: block; width: 175px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}',
+    'span._embed_pin span._embed_pin_text span._embed_pin_text_container_pinner { color: #777;}',
 
     // EMBEDDED BOARDS
 
     // main container
     'span._embed_grid { display: inline-block; margin: 0; padding:10px 0; position: relative; text-align: center}',
+
     // border and corners
-    'span._embed_grid._fancy { background: #fff; box-shadow: 0 0 3px #aaa; border-radius: 3px; }',
+    'span._embed_grid._fancy { background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .33); border-radius: 3px; }',
+
     // header container
-    'span._embed_grid span._embed_grid_hd { display: block; margin: 0 10px; padding: 0; height: 45px; position: relative; background: #fff}',
+    'span._embed_grid span._embed_grid_hd { display: block; margin: 0 10px; padding: 0; height: 45px; position: relative;}',
 
     // avatar
     'span._embed_grid span._embed_grid_hd a._avatar { position: absolute; top: 0; left: 0; height: 36px; width: 36px; }',
-    'span._embed_grid span._embed_grid_hd a._avatar::before { position: absolute; content:""; z-index: 2; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 2px #888;  border-radius: 3px; }',
-    'span._embed_grid span._embed_grid_hd a._avatar img { position: relative; height: 36px; width: 36px; margin: 0; padding: 0; border-radius: 3px; border: none;}',
+    'span._embed_grid span._embed_grid_hd a._avatar img { position: relative; height: 36px; width: 36px; min-height: 36px; min-width: 36px; margin: 0; padding: 0; border-radius: 3px; border: none;}',
 
     // header
-    'span._embed_grid span._embed_grid_hd a { text-decoration: none; background: transparent; cursor: pointer; white-space: nowrap; position: absolute; left: 44px; text-align: left; overflow: hidden; text-overflow: ellipsis; }',
-    'span._embed_grid span._embed_grid_hd a:hover { text-decoration: none; background: #fff; }',
-    'span._embed_grid span._embed_grid_hd a:active { text-decoration: none; background: #fff; }',
+    'span._embed_grid span._embed_grid_hd a { text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; position: absolute; left: 44px; text-align: left; overflow: hidden; text-overflow: ellipsis; }',
+    'span._embed_grid span._embed_grid_hd a:hover { text-decoration: none; background: inherit; }',
+    'span._embed_grid span._embed_grid_hd a:active { text-decoration: none; background: inherit; }',
     // top line
     'span._embed_grid span._embed_grid_hd a._embed_grid_first { top: 2px; font-family: helvetica, sans-serif; font-weight: bold; color:#333; font-size: 14px; line-height: 16px; }',
     // second line
@@ -1986,7 +1999,7 @@
     // inset shadow mask
     'span._embed_grid span._embed_grid_bd a._embed_grid_th::before { position: absolute; content:""; z-index: 2; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 2px #888; }',
     // thumbnail image
-    'span._embed_grid span._embed_grid_bd a._embed_grid_th img._embed_grid_img { border: none; position: absolute; top: 50%; left: 0; }',
+    'span._embed_grid span._embed_grid_bd a._embed_grid_th img._embed_grid_img { border: none; margin-left: 0; margin-right: 0; margin-bottom: 0; padding: 0;position: absolute; top: 50%; left: 0; }',
     // footer button
     'a._embed_grid_ft { cursor: pointer; text-shadow: 0 1px #fff; display: block; text-align: center; border: 1px solid #ccc; margin: 10px 10px 0; height: 31px; line-height: 30px;border-radius: 2px; text-decoration: none; font-family: Helvetica; font-weight: bold; font-size: 13px; color: #746d6a; background: #f4f4f4 url(_cdn/images/pidgets/board_button_link.png) 0 0 repeat-x}',
     'a._embed_grid_ft:hover { text-decoration: none; background: #fefefe url(_cdn/images/pidgets/board_button_hover.png) 0 0 repeat-x}',
