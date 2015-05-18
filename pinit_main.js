@@ -1,6 +1,5 @@
 /* jshint indent: false, maxlen: false */
-
-// move all endpoints / CDNs to https
+// if named, trigger a callback on API errors
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -109,7 +108,17 @@
 
           // create the callback
           $.f.callback[n] = function (r) {
-            func(r, n);
+            if (r) {
+              if (r.status && r.status === 'failure') {
+                if (typeof $.v.config.error === 'string') {
+                  if (typeof $.w[$.v.config.error] === 'function') {
+                    $.w[$.v.config.error](r.message || r.status);
+                  }
+                }
+              } else {
+                func(r, n);
+              }
+            }
             $.f.kill(id);
           };
 
@@ -380,7 +389,7 @@
                 if (el.innerHTML !== 'II GIF') {
                   el.innerHTML = 'II GIF';
                   $.f.set(el, 'data-pin-pause', img.src);
-                  img.src = img.src.replace(/(237x|345x)/, 'originals');
+                  img.src = img.src.replace(/(237x|345x|600x)/, 'originals');
                 } else {
                   el.innerHTML = '&#9654; GIF';
                   img.src = $.f.getData(el, 'pause');
@@ -575,12 +584,14 @@
               'data-pin-log': log + '_thumb'
             }});
 
+            var imgReply = data[i].images[$.a.pinWidget.imgKey];
+
             var scale = {
-              'height': data[i].images['237x'].height * (scaleFactors.width / data[i].images['237x'].width),
+              'height': imgReply.height * (scaleFactors.width / imgReply.width),
               'width': scaleFactors.width
             };
             var img = $.f.make({'IMG': {
-              'src': data[i].images['237x'].url,
+              'src': imgReply.url,
               'data-pin-nopin': 'true',
               'height': scale.height,
               'width': scale.width,
@@ -802,11 +813,24 @@
           pin: function (r, k) {
             var parent = $.d.getElementById($.a.k + '_' + k);
             if (parent && r.data && r.data[0]) {
+
+              // did we find the pin ID?
+              if (r.data[0].error) {
+                // do we have a custom error handler?
+                if (typeof $.v.config.error === 'string') {
+                  if (typeof $.w[$.v.config.error] === 'function') {
+                    $.w[$.v.config.error](r.data[0].error);
+                  }
+                }
+                // return instead of trying to render
+                return;
+              }
+
               $.f.debug('API replied with pin data');
 
               var pin = r.data[0], thumb = {};
               if (pin.images) {
-                thumb = pin.images['237x'];
+                thumb = pin.images[$.a.pinWidget.imgKey];
               }
 
               if (pin && pin.id && pin.description && thumb.url && thumb.width && thumb.height) {
@@ -839,13 +863,23 @@
                   'data-pin-href': $.v.endpoint.repin.replace(/%s/, pin.id)
                 }});
 
-                // is data-pin-width set to large?
+                // Shall we build a wider-than-normal pin widget?
                 width = $.f.getData(parent, 'width');
                 if (width === 'large') {
-                  thumb.url = thumb.url.replace(/237x/, '345x');
-                  thumb.height = ~~(thumb.height * 1.4556);
-                  thumb.width = 345;
-                  container.className = container.className + ' ' + $.a.k + '_large';
+                  // top-level domain must match $.a.pinWidget.domain
+                  var tld = $.d.URL.split('/')[2].split('.').pop() || '';
+                  // language must match $.a.pinWidget.lang
+                  if (lang.match($.a.pinWidget.lang) && tld.match($.a.pinWidget.domain)) {
+                    thumb.url = thumb.url.replace(/237x/, $.a.pinWidget.large.width + 'x');
+                    thumb.height = ~~(thumb.height * $.a.pinWidget.large.ratio);
+                    thumb.width = $.a.pinWidget.large.width;
+                    container.className = container.className + ' ' + $.a.k + '_large';
+                  } else {
+                    thumb.url = thumb.url.replace(/237x/, $.a.pinWidget.medium.width + 'x');
+                    thumb.height = ~~(thumb.height * $.a.pinWidget.medium.ratio);
+                    thumb.width = $.a.pinWidget.medium.width;
+                    container.className = container.className + ' ' + $.a.k + '_medium';
+                  }
                 }
 
                 // embedded media?
@@ -1613,12 +1647,25 @@
       'beside': true
     }
   },
+  'pinWidget': {
+    'domain':  /(jp)/,
+    'lang': /(ja)/,
+    'imgKey': '237x',
+    'medium': {
+      'width': 345,
+      'ratio': 1.46
+    },
+    'large': {
+      'width': 600,
+      'ratio': 2.54
+    }
+  },
   'minImgSize': 119,
   // source 6 means "pinned with the externally-hosted Pin It button"
   'countSource': 6,
   'dataAttributePrefix': 'data-pin-',
   // valid config parameters
-  'configParam': [ 'build', 'debug', 'style', 'hover', 'zero', 'color', 'height', 'lang', 'shape'],
+  'configParam': [ 'build', 'debug', 'style', 'hover', 'zero', 'color', 'height', 'lang', 'shape', 'error'],
   // configuration for the pop-up window
   'pop': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=750,height=320,left=0,top=0',
   'popLarge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=900,height=500,left=0,top=0',
@@ -1921,7 +1968,8 @@
 
     // main container
     'span._embed_pin { -webkit-font-smoothing: antialiased; cursor: pointer; display: inline-block; text-align: center; overflow: hidden; vertical-align: top; width: 237px }',
-    'span._embed_pin._large { width: 345px; }',
+    'span._embed_pin._medium { width: 345px; }',
+    'span._embed_pin._large { width: 600px; }',
 
     // reset styles
     'span._embed_pin img { border: 0; padding: 0; box-shadow: none; }',
