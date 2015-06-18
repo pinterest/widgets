@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// if named, trigger a callback on API errors
+// send base_scheme=https to API calls if we're on an https page
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -100,25 +100,47 @@
           }
         },
 
+        // call an API endpoint
         call: function (url, func) {
-          var n, id, sep = '?';
+          var n, id, tag, msg, sep = '?';
 
+          // $.f.callback starts as an empty array
           n = $.f.callback.length;
+
+          // new SCRIPT tags get IDs so we can find them, query them, and delete them later
           id = $.a.k + '.f.callback[' + n + ']';
 
-          // create the callback
+          // the callback will fire only when the API returns
           $.f.callback[n] = function (r) {
+            // do we have output?
             if (r) {
+              // do we need to log an error?
               if (r.status && r.status === 'failure') {
+                // some errors don't have messages; fall back to status
+                msg = r.message || r.status;
+                // has the site operator specified a callback?
                 if (typeof $.v.config.error === 'string') {
+                  // does the callback function actually exist?
                   if (typeof $.w[$.v.config.error] === 'function') {
-                    $.w[$.v.config.error](r.message || r.status);
+                    $.w[$.v.config.error](msg);
+                  }
+                }
+                // scope gotcha: recreate id string from n instead of relying on it already being in id
+                tag = $.d.getElementById($.a.k + '.f.callback[' + n + ']');
+                // found it?
+                if (tag) {
+                  // does it have a src attribute?
+                  if (tag.src) {
+                    // log only the URL part
+                    $.f.log('&type=api_error&code=' + r.code + '&msg=' + msg + '&url=' + encodeURIComponent(tag.src.split('?')[0]));
                   }
                 }
               } else {
+                // send the API output to the function we passed when we made the SCRIPT tag
                 func(r, n);
               }
             }
+            // clean up the SCRIPT tag after it's run
             $.f.kill(id);
           };
 
@@ -127,7 +149,7 @@
             sep = '&';
           }
 
-          // make and call the new script node
+          // make and call the new SCRIPT tag
           $.d.b.appendChild( $.f.make({'SCRIPT': {
               'id': id,
               'type': 'text/javascript',
@@ -146,12 +168,9 @@
 
         // build stylesheet
         presentation: function () {
-          var css, cdn, rules;
+          var css, rules;
 
           css = $.f.make({'STYLE': {'type': 'text/css'}});
-
-          // suspenders AND belt; if some weird protocol sneaks through, default to http
-          cdn = $.a.cdn['https:'];
 
           rules = $.a.rules.join('\n');
 
@@ -162,7 +181,7 @@
           rules = rules.replace(/;/g, '!important;');
 
           // cdn
-          rules = rules.replace(/_cdn/g, cdn);
+          rules = rules.replace(/_cdn/g, $.a.cdn);
 
           // resolution
           rules = rules.replace(/_rez/g, $.v.resolution);
@@ -609,9 +628,22 @@
             thumb.appendChild(img);
             thumb.style.height = scale.height + 'px';
             thumb.style.width = scale.width + 'px';
+
+            // to which column shall we append this thumbnail?
             if (!h[c]) {
+              // brand-new column: always go here
               h[c] = 0;
+            } else {
+              // find the shortest column
+              var min = 10000;
+              for (var j = 0; j < columns; j = j + 1) {
+                if (h[j] < min) {
+                  min = h[j];
+                  c = j;
+                }
+              }
             }
+
             thumb.style.top = h[c] + 'px';
             thumb.style.left = (c * (scaleFactors.width + $.a.tile.style.margin)) + 'px';
             h[c] = h[c] + scale.height + $.a.tile.style.margin;
@@ -620,13 +652,14 @@
             c = (c + 1) % columns;
           }
 
-          var minHeight = 10000;
+          // style the scrolling grid container
+          var maxHeight = 0;
           for (var i = 0; i < h.length; i = i + 1) {
-            if (h[i] < minHeight) {
-              minHeight = h[i];
+            if (h[i] > maxHeight) {
+              maxHeight = h[i];
             }
           }
-          ct.style.height = minHeight + 'px';
+          ct.style.height = maxHeight + 'px';
           bd.appendChild(ct);
 
           if ($.v.userAgent.match(/Mac OS X/)) {
@@ -1333,6 +1366,9 @@
           }
           var query = '', sep = '?', p;
           params['sub'] = $.v.config.domain;
+          if ($.w.location.protocol === 'https:') {
+            params['base_scheme'] = 'https';
+          }
           for (p in params) {
             if (params[p].hasOwnProperty) {
               query = query + sep + p + '=' + params[p];
@@ -1671,9 +1707,7 @@
   'popLarge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=900,height=500,left=0,top=0',
   'popHuge': 'status=no,resizable=yes,scrollbars=yes,personalbar=no,directories=no,location=no,toolbar=no,menubar=no,width=1040,height=640,left=0,top=0',
   // secure and non-secure content distribution networks
-  'cdn': {
-    'https:': 'https://s-passets.pinimg.com'
-  },
+  'cdn': 'https://s-passets.pinimg.com',
   // tiled image settings
   'tile': {
     'scale': {
@@ -1765,7 +1799,7 @@
       'attribTo': 'by'
     },
     'es': {
-      'seeOn': 'Ver En',
+      'seeOn': 'Ver en',
       'attribTo': 'por'
     },
     'fi': {
