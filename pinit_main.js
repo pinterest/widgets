@@ -1202,7 +1202,20 @@
               a.className = a.className + ' ' + $.a.k + '_pin_it_' + c.config + '_' + c.height;
               var span = $.f.make({'SPAN': {'className': $.a.k + '_hidden', 'id': $.a.k + '_pin_count_' + $.f.callback.length, 'innerHTML': '<i></i>'}});
               a.appendChild(span);
-              $.f.getPinCount($.d.URL);
+
+	            var q;
+	            q = $.f.parse(el.href, {'url': true});
+
+	            if (q.url) {
+		            q.url = $.f.fixUrl(q.url);
+	            } else {
+		            // misconfigured: no page URL was given
+		            q.url = encodeURIComponent($.d.URL);
+		            $.f.debug('no url found; click will pin this page');
+	            }
+
+	            $.f.getPinCount(q.url);
+
             } else {
               a.className = a.className + ' ' + $.a.k + '_pin_it_none';
             }
