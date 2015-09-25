@@ -2081,7 +2081,7 @@
     // inset shadow mask
     'span._embed_grid span._embed_grid_bd a._embed_grid_th::before { position: absolute; content:""; z-index: 2; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 2px #888; }',
     // thumbnail image
-    'span._embed_grid span._embed_grid_bd a._embed_grid_th img._embed_grid_img { border: none; margin-left: 0; margin-right: 0; margin-bottom: 0; padding: 0;position: absolute; top: 50%; left: 0; }',
+    'span._embed_grid span._embed_grid_bd a._embed_grid_th img._embed_grid_img { border: none; margin-left: 0; margin-right: 0; margin-bottom: 0; padding: 0;position: absolute; top: 50%; left: 0; transform: inherit; }',
     // footer button
     'a._embed_grid_ft { cursor: pointer; text-shadow: 0 1px #fff; display: block; text-align: center; border: 1px solid #ccc; margin: 10px 10px 0; height: 31px; line-height: 30px;border-radius: 2px; text-decoration: none; font-family: Helvetica; font-weight: bold; font-size: 13px; color: #746d6a; background: #f4f4f4 url(_cdn/images/pidgets/board_button_link.png) 0 0 repeat-x}',
     'a._embed_grid_ft:hover { text-decoration: none; background: #fefefe url(_cdn/images/pidgets/board_button_hover.png) 0 0 repeat-x}',
