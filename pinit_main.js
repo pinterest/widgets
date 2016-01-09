@@ -316,7 +316,7 @@
           var c = $.f.getButtonConfig(img);
 
           // size > 80x80 and source is not a data: uri?
-          if (img.height > $.a.minImgSize && img.width > $.a.minImgSize && !img.src.match(/^data/)) {
+          if (img.height > $.a.minImgSize && img.width > $.a.minImgSize && !($.f.getData(img, 'media') || img.src).match(/^data/)) {
 
             // make it fresh each time; this pays attention to individual image config options
             var buttonClass = $.a.k + '_pin_it_button_' + c.height + ' ' + $.a.k + '_pin_it_button_' + c.assets + '_' + c.height + '_' + c.color + ' ' + $.a.k + '_pin_it_button_floating_' + c.height;
@@ -366,7 +366,7 @@
           t = v || $.w.event;
           el = $.f.getEl(t);
           if (el) {
-            if (el.tagName === 'IMG' && el.src && !$.f.getData(el, 'no-hover') && !$.f.get(el, 'nopin') && !$.f.getData(el, 'nopin') && $.v.config.hover) {
+            if (el.tagName === 'IMG' && (el.src || $.f.getData(el, 'media')) && !$.f.getData(el, 'no-hover') && !$.f.get(el, 'nopin') && !$.f.getData(el, 'nopin') && $.v.config.hover) {
               // we are inside an image
               if ($.v.hazFloatingButton === false) {
                 // show the floating button
