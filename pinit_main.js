@@ -1438,6 +1438,25 @@
             }
           }
 
+          // find and apply configuration requests passed as META tags
+          var metas = $.d.getElementsByTagName('META'), i, j;
+
+          // loop through all META tags
+          for (i = metas.length - 1; i > -1; i = i - 1) {
+
+            // is it us?
+            if (metas[i] && metas[i].hasAttribute("property") && metas[i].hasAttribute("content")) {
+              // loop through all possible config params
+              for (j = 0; j < $.a.configParam.length; j = j + 1) {
+                if (metas[i].getAttribute("property") ==  $.a.dataAttributePrefix + $.a.configParam[j]) {
+                  // set or overwrite config param with contents
+                  $.v.config[$.a.configParam[j]] = metas[i].content;
+                  // burn after reading to prevent future calls from re-reading config params
+                  $.f.kill(metas[i]);
+               }
+              }
+            }
+          }
           if (typeof $.v.config.build === 'string') {
             $.w[$.v.config.build] = function (el) {
               $.f.build(el);
