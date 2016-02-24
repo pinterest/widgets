@@ -783,7 +783,7 @@
           el = $.f.getEl(t);
           if (el) {
             src = $.f.getData(el, 'media') || el.src;
-            if (el.tagName === 'IMG' && src && !src.match(/^data/) && !$.f.getData(el, 'no-hover') && !$.f.get(el, 'nopin') && !$.f.getData(el, 'nopin') && $.v.config.hover) {
+            if (el.tagName === 'IMG' && src && !src.match(/^data/) && !$.f.getData(el, 'no-hover') && !$.f.get(el, 'nopin') && !$.f.getData(el, 'nopin')) {
               // we are inside an image
               if (!$.v.hazHoverButton) {
                 // show the hoverbutton
