@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// embedded board headers and footers: respect international Pinterest domains
+// remove 1000px grid widget height limit
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -910,7 +910,7 @@
               if (!options.columns || options.columns < 1 || options.columns > 10) {
                 options.columns = 5;
               }
-              if (!options.height || options.height < 200 || options.height > 1000) {
+              if (options.height < 200) {
                 options.height = 340;
               }
 
@@ -1398,7 +1398,7 @@
                 u = k[0] + '/' + k[1];
                 o = {
                   'columns': $.f.getData(a, 'columns') || $.v.config.grid.columns,
-                  'height': $.f.getData(a, 'height') || $.v.config.grid.height,
+                  'height': $.f.getData(a, 'height') - 0 || $.v.config.grid.height,
                   'width': $.f.getData(a, 'width') || null,
                   'noscroll': $.f.getData(a, 'noscroll') || null,
                   'lang': $.f.getData(a, 'lang'),
@@ -1427,7 +1427,7 @@
               k = p[1].split('/');
               o = {
                 'columns': $.f.getData(a, 'columns') || $.v.config.grid.columns,
-                'height': $.f.getData(a, 'height') || $.v.config.grid.height,
+                'height': $.f.getData(a, 'height') - 0 || $.v.config.grid.height,
                 'width': $.f.getData(a, 'width') || null,
                 'noscroll': $.f.getData(a, 'noscroll') || null,
                 'lang': $.f.getData(a, 'lang'),
@@ -1749,7 +1749,7 @@
 }(window, document, {
   'k': 'PIN_' + new Date().getTime(),
   // test version
-  'tv': '2016022501',
+  'tv': '2016022502',
   // we'll look for scripts whose source matches this, and extract config parameters
   'me': /pinit\.js$/,
   // pinterest domain regex
