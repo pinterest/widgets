@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// push new buttons and widgets to 100%
+// embedded board headers and footers: respect international Pinterest domains
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -904,7 +904,7 @@
             return $.f.buildOne(template);
           },
           embedGrid: function (r, options) {
-            var p, template, colHeight, i, pin, minValue, minIndex, j, buttonUrl, buttonLog, boardUrl, str, tt, labelClass, labelContent, label;
+            var p, template, colHeight, i, pin, minValue, minIndex, j, buttonUrl, buttonLog, boardUrl, str, tt, labelClass, labelContent, profileUrl;
             if (r.data) {
               p = r.data;
               if (!options.columns || options.columns < 1 || options.columns > 10) {
@@ -913,12 +913,16 @@
               if (!options.height || options.height < 200 || options.height > 1000) {
                 options.height = 340;
               }
+
+              // profileUrl is not internationalized by API; fix inline
+              profileUrl = options.pinterest + '/' + p.user.profile_url.split('pinterest.com/')[1];
+
               template = {
                 'className': 'embed_grid c' + options.columns,
                 'log': 'embed_grid',
                 'href': options.pinterest,
                 'hd': {
-                  'href': p.user.profile_url,
+                  'href': profileUrl,
                   'img': {
                     'backgroundImage': p.user.image_small_url.replace(/_30.jpg/, '_60.jpg')
                   },
@@ -932,7 +936,7 @@
                 },
                 'ft': {
                   'log':  'embed_user_ft',
-                  'href': p.user.profile_url + 'pins/follow/?guid=' + $.v.guid,
+                  'href': profileUrl + 'pins/follow/?guid=' + $.v.guid,
                   'button': {}
                 }
               }
@@ -973,7 +977,6 @@
               }
 
               // follow button
-
               if (p.board) {
                 // it's a board
                 template.className = template.className + ' board';
@@ -988,31 +991,29 @@
                 $.v.countBoard = $.v.countBoard + 1;
               } else {
                 // it's a profile
-                buttonUrl = p.user.profile_url + 'pins/follow?guid=' + $.v.guid;
+                buttonUrl = profileUrl + 'pins/follow?guid=' + $.v.guid;
                 buttonLog = 'embed_user_ft';
                 $.v.countProfile = $.v.countProfile + 1;
               }
-              buttonUrl = buttonUrl.replace(/https?:\/\/www\.pinterest\.com\//, options.pinterest + '/');
 
-              // properly divide the follow text from the Pinterest logo
+              // follow button label
               str = $.a.strings[options.lang].followOn;
               tt = str.split('%s');
+
+              // if class is "bottom" break text above button at narrow widths
               labelClass = 'bottom';
               labelContent = '<span class="' + $.a.k + '_string" data-pin-href="' + buttonUrl + '" data-pin-log="' + buttonLog + '">' + tt[0] + '</span><span class="' + $.a.k + '_logo" data-pin-href="' + buttonUrl + '" data-pin-log="' + buttonLog + '"></span>';
               if (tt[0] === '') {
+                // if class is "top" break text below button at narrow widths
                 labelClass = 'top';
                 labelContent = '<span class="' + $.a.k + '_logo" data-pin-href="' + buttonUrl + '" data-pin-log="' + buttonLog + '"></span><span class="' + $.a.k + '_string" data-pin-href="' + buttonUrl + '" data-pin-log="' + buttonLog + '">' + tt[1] + '</span>';
               }
-
-              label = '<span data-pin-href="' + buttonUrl + '/follow/?guid=' + $.v.guid + '" data-pin-log="' + buttonLog + '" class="' + $.a.k + '_logo"></span><span data-pin-href="' + buttonUrl + '/follow/?guid=' + $.v.guid + '" data-pin-log="' + buttonLog + '" class="' + $.a.k + '_string">'
-
+              // render HTML outside of buildOne -- dangerous but necessary
               template.ft.button.label = {
                 'addClass': labelClass,
                 'text': labelContent
               }
-
               return $.f.buildOne(template);
-
             }
           },
           embedPin: function (r, options) {
@@ -1748,7 +1749,7 @@
 }(window, document, {
   'k': 'PIN_' + new Date().getTime(),
   // test version
-  'tv': '2016021702',
+  'tv': '2016022501',
   // we'll look for scripts whose source matches this, and extract config parameters
   'me': /pinit\.js$/,
   // pinterest domain regex
