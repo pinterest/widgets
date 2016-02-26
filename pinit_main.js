@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// remove 1000px grid widget height limit
+// allow data-pin-media on sourceless images for hoverbuttons
 
 (function (w, d, a) {
   var $ = w[a.k] = {
@@ -1750,7 +1750,7 @@
 }(window, document, {
   'k': 'PIN_' + new Date().getTime(),
   // test version
-  'tv': '2016022502',
+  'tv': '2016022503',
   // we'll look for scripts whose source matches this, and extract config parameters
   'me': /pinit\.js$/,
   // pinterest domain regex
