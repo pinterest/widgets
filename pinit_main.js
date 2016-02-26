@@ -720,7 +720,7 @@
             c.round = true;
           }
 
-          // size > 120x120 and source is not a data: uri?
+          // size > 120x120?
           if (el.height > $.a.hoverButtonMinImgSize && el.width > $.a.hoverButtonMinImgSize) {
 
             // make it fresh each time; this pays attention to individual image config options
@@ -778,11 +778,12 @@
 
         // mouse over; only active if we have hoverbuttons
         over: function (v) {
-          var t, el;
+          var t, el, src;
           t = v || $.w.event;
           el = $.f.getEl(t);
           if (el) {
-            if (el.tagName === 'IMG' && el.src  && !el.src.match(/^data/) && !$.f.getData(el, 'no-hover') && !$.f.get(el, 'nopin') && !$.f.getData(el, 'nopin')) {
+            src = $.f.getData(el, 'media') || el.src;
+            if (el.tagName === 'IMG' && src && !src.match(/^data/) && !$.f.getData(el, 'no-hover') && !$.f.get(el, 'nopin') && !$.f.getData(el, 'nopin')) {
               // we are inside an image
               if (!$.v.hazHoverButton) {
                 // show the hoverbutton
