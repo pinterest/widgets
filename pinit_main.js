@@ -1101,7 +1101,7 @@
                       },
                       // dropdown is the containing bubble
                       'dropdown': {
-                        // the actual text string. whever value = %, set it to strings[key]
+                        // the actual text string. when value = %, set it to strings[key]
                         'text': $.a.strings[options.lang].report,
                         'log': 'embed_pin_report',
                         'href': options.pinterest + $.a.path.report + '?id=' + p.id
