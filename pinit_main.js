@@ -692,7 +692,7 @@
           }
         },
 
-        // show hoverbuton
+        // show hoverbutton
         showHoverButton: function (el) {
           // always try to kill it
           $.f.kill($.s.hoverButton);
