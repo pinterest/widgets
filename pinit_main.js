@@ -1,11 +1,12 @@
 /* jshint indent: false, maxlen: false */
-// allow data-pin-media on sourceless images for hoverbuttons
+// support native video; update strings
 
-(function (w, d, a) {
+(function (w, d, n, a) {
   var $ = w[a.k] = {
-    'a': a,
-    'd': d,
     'w': w,
+    'd': d,
+    'n': n,
+    'a': a,
     's': {},
     'f': (function () {
       return {
@@ -283,9 +284,14 @@
             // use alternate fill color if specified (white Pin It logotype)
             svg = svg + ' fill="#' + (fill || obj.p[i].f || '#000') + '"';
 
-            // use stroke if specified (count bubbles)
+            // stroke
             if (obj.p[i].s) {
-              svg = svg + ' stroke="#' + obj.p[i].s + '" stroke-width="2"';
+              svg = svg + ' stroke="#' + obj.p[i].s + '"';
+              // stroke-width
+              if (!obj.p[i].w) {
+                obj.p[i].w = '2';
+              }
+              svg = svg + ' stroke-width="' + obj.p[i].w + '"';
             }
 
             // done
@@ -311,6 +317,7 @@
             '%buttonBorderRadius%': '3px',
             '%buttonBorderRadiusTall%': '3px',
             // SVG replacements
+            '%native%': $.f.makeSVG($.a.svg.native),
             '%above%': $.f.makeSVG($.a.svg.above),
             '%beside%': $.f.makeSVG($.a.svg.beside),
             '%likes%': $.f.makeSVG($.a.svg.likes),
@@ -426,7 +433,6 @@
           // open pinmarklet
           pinAny: function () {
             $.f.debug('opening the grid');
-            // TODO: send domain
             $.d.b.appendChild($.f.make({
               'SCRIPT': {
                 'type': 'text/javascript',
@@ -485,18 +491,16 @@
           },
           // open repin dialog
           repin: function (data, fromHover) {
-            var href, logType, pinId, pinterest;
-            pinterest = $.v.config.pinterest;
+            var href, logType, pinId;
             if (typeof data === 'object') {
               if (data.href) {
-                pinterest = 'https://' + data.href.split('/')[2];
                 pinId = data.href.split('/')[4];
               }
             } else {
               pinId = data;
             }
             if (parseInt(pinId)) {
-              var href = pinterest + $.a.path.repin.replace('%s', pinId) + '?guid=' + $.v.guid;
+              var href = $.v.config.pinterest + $.a.path.repin.replace('%s', pinId) + '?guid=' + $.v.guid;
               $.w.open(href, 'pin' + new Date().getTime(), $.a.pop.base.replace('%dim%', $.a.pop.small));
             } else {
               $.f.debug($.v.config.util + '.repin requires an integer pinId');
@@ -516,6 +520,13 @@
               o.el.className = $.a.k + '_control ' + $.a.k + '_playing';
               img.style.backgroundImage = 'url(' + $.f.getData(o.el, 'src') + ')';
             }
+          },
+          // play native video
+          native: function (o) {
+            var video = o.el.previousSibling;
+            video.style.display = 'block';
+            video.play();
+            $.f.kill(o.el);
           },
           // open the three-dot menu
           menu: function (o) {
@@ -557,7 +568,7 @@
                   // set an attribute
                   var value = obj[key];
                   if (key === 'text') {
-                    el.innerHTML = value;
+                    el.innerHTML = el.innerHTML + value;
                   }
                   if (key === 'addClass') {
                     el.className = el.className + ' ' + $.a.k + '_' +  value;
@@ -581,22 +592,46 @@
                       'data-pin-href': $.f.getData(el, 'href'),
                       'data-pin-log': $.f.getData(el, 'log')
                   }});
-                  if (key === 'embed') {
-                    var embed = obj[key];
-                    if (embed.type && embed.type === 'gif') {
-                      // it's an animated gif
-                      el.appendChild($.f.make({'SPAN': {
-                        'className': $.a.k + '_control ' + $.a.k + '_paused',
-                        'data-pin-log': 'embed_pin_play',
-                        'data-pin-src': embed.src
-                      }}));
-                    } else {
-                      if (embed.src) {
-                        el.appendChild($.f.make({'IFRAME': {
-                          'className': $.a.k + '_iframe',
-                          'src': embed.src.replace(/autoplay=/i, 'nerfAutoPlay=')
+                  if (key === 'embed' || key === 'video') {
+                    if (key === 'embed') {
+                      var embed = obj[key];
+                      if (embed.type && embed.type === 'gif') {
+                        // it's an animated gif
+                        el.appendChild($.f.make({'SPAN': {
+                          'className': $.a.k + '_control ' + $.a.k + '_paused',
+                          'data-pin-log': 'embed_pin_play',
+                          'data-pin-src': embed.src
                         }}));
+                      } else {
+                        if (embed.src) {
+                          el.appendChild($.f.make({'IFRAME': {
+                            'className': $.a.k + '_iframe',
+                            'src': embed.src.replace(/autoplay=/i, 'nerfAutoPlay=')
+                          }}));
+                        }
                       }
+                    } else {
+                      // native video
+                      var video = $.f.make({'VIDEO': {
+                        'controls': 'controls',
+                        'width': obj.video.width + '',
+                        'className': $.a.k + '_video',
+                        'data-pin-log': 'embed_pin_video'
+                      }});
+                      video.appendChild($.f.make({'SOURCE': {
+                        'src': obj.video.m3u8,
+                        'type': 'video/m3u8'
+                      }}));
+                      video.appendChild($.f.make({'SOURCE': {
+                        'src': obj.video.mp4,
+                        'type': 'video/mp4'
+                      }}));
+                      video.style.display = 'none';
+                      el.appendChild(video);
+                      el.appendChild($.f.make({'SPAN': {
+                        'className': $.a.k + '_native',
+                        'data-pin-log': 'embed_pin_native'
+                      }}));
                     }
                   } else {
                     el.appendChild(child);
@@ -706,7 +741,7 @@
             'height': $.f.getData(el, 'height') || $.v.config.height || '20',
             'color': $.f.getData(el, 'color') || $.v.config.color || 'gray',
             'shape': $.f.getData(el, 'shape') || $.v.config.shape || 'rect',
-            'lang': $.v.config.lang,
+            'lang': $.f.getData(el, 'lang') || $.v.config.lang,
             // new params
             'tall': $.f.getData(el, 'tall') || $.v.config.tall,
             'round': $.f.getData(el, 'round') || $.v.config.round
@@ -725,19 +760,16 @@
 
             // make it fresh each time; this pays attention to individual image config options
             var buttonClass = $.a.k + '_button_pin';
-            if (c.tall) {
-              buttonClass = buttonClass + ' ' + $.a.k + '_tall';
-            }
             if (c.round) {
               buttonClass = buttonClass + ' ' + $.a.k + '_round';
             } else {
-              if (c.color === 'red' || c.color === 'white') {
-                buttonClass = buttonClass + ' ' + $.a.k + '_' + c.color;
-              }
-              if (c.lang === 'ja') {
-                buttonClass = buttonClass + ' ' + $.a.k + '_ja';
-              }
+              buttonClass = buttonClass + ' ' + $.a.k + '_save'
             }
+
+            if (c.tall) {
+              buttonClass = buttonClass + ' ' + $.a.k + '_tall';
+            }
+
 
             // get position, start href
             var p = $.f.getPos(el), href, log;
@@ -759,6 +791,11 @@
               'data-pin-log': log,
               'data-pin-href': href
             }});
+
+            // save button? use translated string
+            if (!c.round) {
+              $.s.hoverButton.innerHTML = $.a.strings[c.lang].save;
+            }
 
             // add ID if we're repinning
             if (c.id) {
@@ -834,17 +871,18 @@
               'className': 'button_pin',
               'log': options.log
             };
+
             if (options.id) {
               template.id = options.id;
             }
             if (options.log === 'button_pinit') {
-              template.href = options.pinterest + '/pin/create/button/?guid=' + $.v.guid + '-' + $.v.countButton + '&url=' + encodeURIComponent(options.url) + '&media=' + encodeURIComponent(options.media) + '&description=' + encodeURIComponent(options.description);
+              template.href = $.v.config.pinterest + '/pin/create/button/?guid=' + $.v.guid + '-' + $.v.countButton + '&url=' + encodeURIComponent(options.url) + '&media=' + encodeURIComponent(options.media) + '&description=' + encodeURIComponent(options.description);
             }
             if (options.log === 'button_pinit_bookmarklet') {
-              template.href = options.pinterest + '/pin/create/button/';
+              template.href = $.v.config.pinterest + '/pin/create/button/';
             }
             if (options.log === 'button_pinit_repin') {
-              template.href = options.pinterest + '/pin/' + options.id + '/repin/x/?guid=' + $.v.guid;
+              template.href = $.v.config.pinterest + '/pin/' + options.id + '/repin/x/?guid=' + $.v.guid;
             } else {
               if (options.count) {
                 // show count if positive, or configured to show above, or configured to show beside with data-pin-zero set
@@ -862,23 +900,28 @@
               }
             }
 
-            if (options.padded) {
-              template.className = template.className + ' padded';
-            }
-            if (options.round) {
-              template.className = template.className + ' round';
+            if (options.save === 'true') {
+              template.className = template.className + ' save';
+              template.text = $.a.strings[options.lang].save || $.a.strings[$.v.config.lang].save;
             } else {
-              if (options.lang === 'ja') {
-                template.className = template.className + ' ja';
-              }
-              if (options.color === 'red') {
-                template.className = template.className + ' red';
-              }
-              if (options.color === 'white') {
-                template.className = template.className + ' white';
+              if (options.round) {
+                template.className = template.className + ' round';
+              } else {
+                if (options.lang === 'ja') {
+                  template.className = template.className + ' ja';
+                }
+                if (options.color === 'red') {
+                  template.className = template.className + ' red';
+                }
+                if (options.color === 'white') {
+                  template.className = template.className + ' white';
+                }
               }
             }
 
+            if (options.padded) {
+              template.className = template.className + ' padded';
+            }
             if (options.tall) {
               template.className = template.className + ' tall';
             }
@@ -896,10 +939,10 @@
             }
             if (r.id.match(/\//)) {
               // found a forward-slash? follow a board
-              template.href = options.pinterest + '/' + r.id + '/follow/?guid=' + $.v.guid;
+              template.href = $.v.config.pinterest + '/' + r.id + '/follow/?guid=' + $.v.guid;
             } else {
               // no forward-slash? follow a pinner
-              template.href = options.pinterest + '/' + r.id + '/pins/follow/?guid=' + $.v.guid;
+              template.href = $.v.config.pinterest + '/' + r.id + '/pins/follow/?guid=' + $.v.guid;
             }
             $.v.countFollow = $.v.countFollow + 1;
             return $.f.buildOne(template);
@@ -916,12 +959,12 @@
               }
 
               // profileUrl is not internationalized by API; fix inline
-              profileUrl = options.pinterest + '/' + p.user.profile_url.split('pinterest.com/')[1];
+              profileUrl = $.v.config.pinterest + '/' + p.user.profile_url.split('pinterest.com/')[1];
 
               template = {
                 'className': 'embed_grid c' + options.columns,
                 'log': 'embed_grid',
-                'href': options.pinterest,
+                'href': $.v.config.pinterest,
                 'hd': {
                   'href': profileUrl,
                   'img': {
@@ -968,7 +1011,7 @@
                 }
                 template.bd.ct[minIndex].col.push({
                   'img': {
-                    'href': options.pinterest + '/pin/' + pin.id,
+                    'href': $.v.config.pinterest + '/pin/' + pin.id,
                     'backgroundImage': pin.images['237x'].url,
                     'backgroundColor': pin.dominant_color,
                     'paddingBottom': (pin.images['237x'].height / pin.images['237x'].width) * 100 + '%'
@@ -981,7 +1024,7 @@
               if (p.board) {
                 // it's a board
                 template.className = template.className + ' board';
-                boardUrl = options.pinterest + p.board.url;
+                boardUrl = $.v.config.pinterest + p.board.url;
                 template.hd.board = {
                   'text': p.board.name,
                   'href': boardUrl
@@ -1060,7 +1103,7 @@
               template = {
                 'className': 'embed_pin' + widthMain + langMod,
                 'log': 'embed_pin' + widthMod,
-                'href': options.pinterest + '/pin/' + p.id + '/',
+                'href': $.v.config.pinterest + '/pin/' + p.id + '/',
                 'id': p.id,
                 'bd': {
                   'hd': {
@@ -1084,7 +1127,7 @@
                   // rich pin data
                   'source': {
                     'log': 'embed_pin_domain',
-                    'href': p.rich_metadata.url || options.pinterest + '/pin/' + p.id + '/',
+                    'href': p.rich_metadata.url || $.v.config.pinterest + '/pin/' + p.id + '/',
                     // favicon
                     'img': {
                       'backgroundImage': p.rich_metadata.favicon_link || ''
@@ -1101,16 +1144,16 @@
                       },
                       // dropdown is the containing bubble
                       'dropdown': {
-                        // the actual text string. when value = %, set it to strings[key]
+                        // the actual text string. whever value = %, set it to strings[key]
                         'text': $.a.strings[options.lang].report,
                         'log': 'embed_pin_report',
-                        'href': options.pinterest + $.a.path.report + '?id=' + p.id
+                        'href': $.v.config.pinterest + $.a.path.report + '?id=' + p.id
                       }
                     }
                   }
                 },
                 'ft': {
-                  'href': p.pinner.profile_url.replace(/https?:\/\/www\.pinterest\.com\//, options.pinterest + '/'),
+                  'href': p.pinner.profile_url.replace(/https?:\/\/www\.pinterest\.com\//, $.v.config.pinterest + '/'),
                   'log': 'embed_pin_pinner' + widthMod,
                   'img': {
                     'backgroundImage': p.pinner.image_small_url.replace(/30/, '60')
@@ -1119,12 +1162,14 @@
                     'text': p.pinner.full_name
                   },
                   'board': {
-                    'href': options.pinterest +  p.board.url,
+                    'href': $.v.config.pinterest +  p.board.url,
                     'log': 'embed_pin_board' + widthMod,
                     'text': p.board.name
                   }
                 }
               };
+              template.bd.hd.repin.addClass = 'save';
+              template.bd.hd.repin.text = $.a.strings[options.lang].save;
               if (!options.terse) {
                 // optional pin description; hidden when data-pin-terse is set
                 template.bd.description = {
@@ -1155,19 +1200,27 @@
               if (p.embed && p.embed.src) {
                 template.bd.hd.container.embed =  p.embed;
               }
+              if (p.videos && p.videos.video_list && p.videos.video_list.V_HLSV4 && p.videos.video_list.V_720P) {
+                template.bd.hd.container.video =  {
+                  'width': thumb.width,
+                  'height': thumb.height,
+                  'm3u8': p.videos.video_list.V_HLSV4.url,
+                  'mp4': p.videos.video_list.V_720P.url
+                };
+              }
               // repins / likes
               if (p.repin_count || p.like_count) {
                 template.bd.stats = {};
                 if (p.repin_count) {
                   template.bd.stats.repins = {
                     'text': '' + p.repin_count,
-                    'href': options.pinterest + '/pin/' + p.id + '/repins/'
+                    'href': $.v.config.pinterest + '/pin/' + p.id + '/repins/'
                   }
                 }
                 if (p.like_count) {
                   template.bd.stats.likes = {
                     'text': '' + p.like_count,
-                    'href': options.pinterest + '/pin/' + p.id + '/likes/'
+                    'href': $.v.config.pinterest + '/pin/' + p.id + '/likes/'
                   }
                 }
               }
@@ -1277,11 +1330,11 @@
               'color': $.f.getData(a, 'color') || $.v.config.color,
               'round': $.f.getData(a, 'round') || $.v.config.round,
               'tall': $.f.getData(a, 'tall') || $.v.config.tall,
-              'lang': $.f.getData(a, 'lang'),
-              'domain': $.f.getData(a, 'domain')
+              'lang': $.f.getData(a, 'lang') || $.v.config.lang,
+              'save': $.f.getData(a, 'save') || $.v.config.save
             };
 
-            $.f.fixDomain(o);
+            $.f.checkLang(o);
 
             // how to tell what kind of button we need to make
             if (o.media) {
@@ -1306,8 +1359,8 @@
               a.removeAttribute('href');
               // tell us what to log
               $.f.set(a, 'data-pin-log', 'button_pinit');
-              // o.pinterest, o.url, o.media, and o.description have already been parsed and set
-              $.f.set(a, 'data-pin-href', o.pinterest + '/pin/create/button' +
+              // o.url, o.media, and o.description have already been parsed and set
+              $.f.set(a, 'data-pin-href', $.v.config.pinterest + '/pin/create/button' +
                          '?guid=' + $.v.guid + '-' + $.v.countButton +
                          '&url=' + encodeURIComponent(o.url) +
                          '&media=' + encodeURIComponent(o.media) +
@@ -1353,11 +1406,10 @@
             o = {
               'custom': $.f.getData(a, 'custom'),
               'tall': $.f.getData(a, 'tall'),
-              'lang': $.f.getData(a, 'lang'),
-              'domain': $.f.getData(a, 'domain')
+              'lang': $.f.getData(a, 'lang') || $.v.config.lang
             };
 
-            $.f.fixDomain(o);
+            $.f.checkLang(o);
 
             p = a.href.split('pinterest.com/');
             if (p[1]) {
@@ -1371,10 +1423,10 @@
                 if (o.custom) {
                   if (r.id.match(/\//)) {
                     // found a forward-slash? follow a board
-                    href = o.pinterest + '/' + r.id + '/follow/?guid=' + $.v.guid;
+                    href = $.v.config.pinterest + '/' + r.id + '/follow/?guid=' + $.v.guid;
                   } else {
                     // no forward-slash? follow a pinner
-                    href = o.pinterest + '/' + r.id + '/pins/follow/?guid=' + $.v.guid;
+                    href = $.v.config.pinterest + '/' + r.id + '/pins/follow/?guid=' + $.v.guid;
                   }
                   $.f.set(a, 'data-pin-href', href);
                   $.f.set(a, 'data-pin-log', 'button_follow');
@@ -1392,7 +1444,7 @@
           },
           embedBoard: function (a) {
             var p, k, u, o, w, bs;
-            p = a.href.split('pinterest.com/');
+            p = a.href.split('#')[0].split('?')[0].split('pinterest.com/');
             if (p[1]) {
               k = p[1].split('/');
               if (k[0] && k[1]) {
@@ -1402,11 +1454,10 @@
                   'height': $.f.getData(a, 'height') - 0 || $.v.config.grid.height,
                   'width': $.f.getData(a, 'width') || null,
                   'noscroll': $.f.getData(a, 'noscroll') || null,
-                  'lang': $.f.getData(a, 'lang'),
-                  'domain': $.f.getData(a, 'domain')
+                  'lang': $.f.getData(a, 'lang') || $.v.config.lang
                 };
 
-                $.f.fixDomain(o);
+                $.f.checkLang(o);
 
                 $.f.getLegacy.grid(a, o);
 
@@ -1415,7 +1466,7 @@
                   bs='&base_scheme=https';
                 }
 
-                $.f.call($.a.endpoint.board.replace(/%s/, u) + '?sub=' + o.domain + bs, function (r) {
+                $.f.call($.a.endpoint.board.replace(/%s/, u) + '?sub=' + $.v.domain + bs, function (r) {
                   $.f.replace(a, $.f.structure.embedGrid(r, o));
                 });
               }
@@ -1423,7 +1474,7 @@
           },
           embedUser: function (a) {
             var p, k, u, o, bs;
-            p = a.href.split('pinterest.com/');
+            p = a.href.split('#')[0].split('?')[0].split('pinterest.com/');
             if (p[1]) {
               k = p[1].split('/');
               o = {
@@ -1431,11 +1482,10 @@
                 'height': $.f.getData(a, 'height') - 0 || $.v.config.grid.height,
                 'width': $.f.getData(a, 'width') || null,
                 'noscroll': $.f.getData(a, 'noscroll') || null,
-                'lang': $.f.getData(a, 'lang'),
-                'domain': $.f.getData(a, 'domain')
+                'lang': $.f.getData(a, 'lang') || $.v.config.lang
               };
 
-              $.f.fixDomain(o);
+              $.f.checkLang(o);
 
               $.f.getLegacy.grid(a, o);
 
@@ -1444,32 +1494,31 @@
                 bs='&base_scheme=https';
               }
 
-              $.f.call($.a.endpoint.user.replace(/%s/, k[0]) + '?sub=' + o.domain + bs, function (r) {
+              $.f.call($.a.endpoint.user.replace(/%s/, k[0]) + '?sub=' + $.v.domain + bs, function (r) {
                 $.f.replace(a, $.f.structure.embedGrid(r, o));
               });
             }
           },
           embedPin: function (a) {
             var p, k, u, o, bs;
-            p = a.href.split('pinterest.com/');
+            p = a.href.split('#')[0].split('?')[0].split('pinterest.com/');
             if (p[1]) {
               k = p[1].split('/');
               if (k[1]) {
                 o = {
                   'width': $.f.getData(a, 'width') || null,
                   'terse': $.f.getData(a, 'terse') || null,
-                  'lang': $.f.getData(a, 'lang'),
-                  'domain': $.f.getData(a, 'domain')
+                  'lang': $.f.getData(a, 'lang') || $.v.config.lang
                 };
 
-                $.f.fixDomain(o);
+                $.f.checkLang(o);
 
                 bs = '';
                 if ($.w.location.protocol === 'https:') {
                   bs='&base_scheme=https';
                 }
 
-                $.f.call($.a.endpoint.pin.replace(/%s/, k[1]) + '&sub=' + o.domain + bs, function (r) {
+                $.f.call($.a.endpoint.pin.replace(/%s/, k[1]) + '&sub=' + $.v.domain + bs, function (r) {
                   $.f.replace(a, $.f.structure.embedPin(r, o));
                 });
               }
@@ -1532,66 +1581,17 @@
           }
         },
 
-        // fix up domain and language; create o.pinterest
-        fixDomain: function (o) {
+        // be sure we have requested strings for language
+        checkLang: function (o) {
           // do we have these strings?
           if (!$.a.strings[o.lang]) {
             o.lang = $.v.config.lang;
           }
-          if (o.domain) {
-            // got something from individual widget; check it
-            if (!$.a.validDomain[o.domain]) {
-              o.domain = $.v.config.domain;
-            }
-          } else {
-            // use the domain sent in script config, deduced from lang attribute on HTML tag, or default (www)
-            o.domain = $.v.config.domain;
-          }
-          o.pinterest = 'https://' + o.domain + '.pinterest.com';
         },
 
         // find and apply configuration requests from surrounding page, plus those passed as data attributes on SCRIPT tag
         config: function () {
-          var script = $.d.getElementsByTagName('SCRIPT'), i, j, n, p, lang, rootLang, domain;
-
-          // check the HTML tag for a lang attribute
-          lang = $.d.getElementsByTagName('HTML')[0].getAttribute('lang');
-          // not found, look for a META tag
-          if (!lang) {
-            var meta = $.d.getElementsByTagName('META');
-            for (i = 0, n = meta.length; i < n; i = i + 1) {
-              var equiv = $.f.get(meta[i], 'http-equiv');
-              if (equiv) {
-                // match content-language or Content-Language
-                equiv = equiv.toLowerCase();
-                if (equiv === 'content-language') {
-                  var content = $.f.get(meta[i], 'content');
-                  if (content) {
-                    lang = content;
-                    break;
-                  }
-                }
-              }
-            }
-          }
-
-          // nothing? use default
-          if (!lang) {
-            lang = $.a.defaults.lang;
-          }
-          lang = lang.toLowerCase();
-          rootLang = lang.split('-')[0];
-
-          // try to find a valid domain for this language
-          domain = $.a.langToDomain[lang] || $.a.langToDomain[rootLang] || $.a.defaults.domain;
-
-          // confirm that we have strings for this language
-          if (!$.a.strings[lang]) {
-            lang = rootLang
-            if (!$.a.strings[lang]) {
-              lang = $.a.defaults.lang;
-            }
-          }
+          var script = $.d.getElementsByTagName('SCRIPT'), i, j, n, p;
 
           // get all config params by finding data-pin- attributes on pinit.js
           for (i = script.length - 1; i > -1; i = i - 1) {
@@ -1614,26 +1614,12 @@
           if ($.v.config.lang) {
             // check that it's valid (don't bother checking first syllable of lang; operators need to give us a valid string)
             if (!$.a.strings[$.v.config.lang]) {
-              // lang has already been deduced from HTML or META tag, validated, and set to $.a.defaults.lang if invalid
-              $.f.debug($.v.config.lang + ' not found in valid languages, changing back to ' + lang);
-              $.v.config.lang = lang;
+              // lang has already been deduced from HTML or META tag, validated, and set to $.v.lang if invalid
+              $.f.debug($.v.config.lang + ' not found in valid languages, changing back to ' + $.v.lang);
+              $.v.config.lang = $.v.lang;
             }
           } else {
-            // lang has already been deduced from HTML or META tag, validated, and set to $.a.defaults.lang if invalid
-            $.v.config.lang = lang;
-          }
-
-          // did the site operator attempt to set a domain with data-pin-domain on pinit.js?
-          if ($.v.config.domain) {
-            // check that it's valid
-            if (!$.a.validDomain[$.v.config.domain]) {
-              // domain has already been deduced from lang, validated, and set to $.a.defaults.domain if invalid
-              $.f.debug($.v.config.domain + ' not found in valid domains, changing it to ' + $.a.langToDomain[$.v.config.lang]);
-              $.v.config.domain = $.a.langToDomain[$.v.config.lang];
-            }
-          } else {
-            // domain has already been deduced from lang, validated, and set to $.a.defaults.domain if invalid
-            $.v.config.domain = domain;
+            $.v.config.lang = $.v.lang;
           }
 
           // build utility
@@ -1649,11 +1635,14 @@
           }
 
           // global Pinterest URL will be used in most places; we will have to update URLs we get from API endpoints in widgets
-          $.v.config.pinterest = 'https://' + $.v.config.domain + '.pinterest.com';
+          $.v.config.pinterest = 'https://' + $.v.domain + '.pinterest.com';
 
           // wait one second and then send a logging ping
           $.w.setTimeout(function () {
-            var str = '&type=pidget&sub=' + $.v.config.domain + '&button_count=' + $.v.countButton + '&follow_count=' + $.v.countFollow + '&pin_count=' + $.v.countPin;
+            var str = '&type=pidget&sub=' + $.v.domain + '&button_count=' + $.v.countButton + '&follow_count=' + $.v.countFollow + '&pin_count=' + $.v.countPin;
+            if ($.v.canHazHoverButtons) {
+              str = str + '&button_hover=1';
+            }
             if ($.v.countPinMedium) {
               str = str + '&pin_count_medium=' + $.v.countPinMedium;
             }
@@ -1671,9 +1660,104 @@
 
         },
 
+        // given window.navigator.language, return appropriate strings and domain
+        langLocLookup: function () {
+
+          var t, i, lang, locale, hazAltDomain, q;
+
+          // defaults: English, WWW
+          $.v.lang = 'en';
+          $.v.domain = 'www';
+
+          // try window.navigator.language first
+          t = $.n.language || $.v.lang;
+          $.f.debug('Looking up language and domain for ' + t);
+
+          // clean and split
+          t = t.toLowerCase();
+          t = t.replace(/[^a-z0-9]/g, ' ');
+          t = t.replace(/^\s+|\s+$/g, '')
+          t = t.replace(/\s+/g, ' ');
+          t = t.split(' ');
+
+          // fix three-parters like bs-latn-ba
+          if (t.length > 2) {
+            for (i = t.length-1; i > -1; i = i - 1) {
+              if (t[i].length !== 2) {
+                t.splice(i, 1);
+              }
+            }
+          }
+
+          // do we have strings that match t[0];
+          if (t[0]) {
+            lang = t[0];
+            // is there an immediate match for language in strings?
+            if ($.a.strings[lang]) {
+              $.v.lang = lang;
+            }
+            // is there an immediate match for language in domains?
+            if ($.a.save.domain[lang]) {
+              $.v.domain = lang;
+            }
+            // do we have a locale?
+            if (t[1]) {
+              locale = t[1];
+              if (locale !== lang) {
+                hazAltDomain = false;
+                q = $.a.save.lookup[lang];
+                // find it in list?
+                if (q) {
+                  // bare domain like fi needs to allow fi-us
+                  if (q === true) {
+                    if (!$.a.save.domain[locale]) {
+                      $.v.domain = 'www';
+                    }
+                  } else {
+                    // some domains don't match string abbreviation
+                    if (q.d === locale) {
+                      // domain matches main default, as for hi-in
+                      $.v.domain = q.d;
+                    } else {
+                      // got alt?
+                      if (q.alt) {
+                        if (q.alt[locale]) {
+                          if (typeof q.alt[locale] === 'string') {
+                            // alt dom is a string, as for gb = uk, no lookup needed
+                            $.v.domain = q.alt[locale];
+                          } else {
+                            if (q.alt[locale].d) {
+                              // domain is different, as for pt-br
+                              $.v.domain = q.alt[locale].d;
+                              hazAltDom = true;
+                            }
+                            if (q.alt[locale].s) {
+                              // strings are different as for fr-be or tr-cy
+                              $.v.lang = q.alt[locale].s;
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                // if we don't have an alternate domain, use the default for this domain
+                if (!hazAltDomain) {
+                  if ($.a.save.domain[locale]) {
+                    $.v.domain = locale;
+                  }
+                }
+              }
+            }
+          }
+          $.f.debug('Lang: ' + $.v.lang);
+          $.f.debug('Domain: ' + $.v.domain);
+          return { 's': $.v.lang, 'd': $.v.domain};
+        },
+
         init: function () {
 
-          var i, dq = false;
+          var i, t, tld = '', forceHover = false, dq = false;
 
           $.d.b = $.d.getElementsByTagName('BODY')[0];
           $.d.h = $.d.getElementsByTagName('HEAD')[0];
@@ -1700,6 +1784,8 @@
             'countBoard': 0,
             'countProfile': 0
           };
+
+          $.f.langLocLookup();
 
           // make a 12-digit base-60 number for conversion tracking
           for (i = 0; i < 12; i = i + 1) {
@@ -1731,12 +1817,24 @@
             // add a single event listener to the body for minimal impact
             $.f.listen($.d.b, 'click', $.f.click);
 
-            // need hoverbuttons?
-            if ($.v.config.hover) {
-              $.v.countButton = $.v.countButton + 1;
-              // we set this so our browser extensions know not to render hoverbuttons
-              $.d.b.setAttribute('data-pin-hover', true);
-              $.f.listen($.d.b, 'mouseover', $.f.over);
+            t = $.v.here.split('/');
+
+            if (t[2]) {
+              tld = t[2].split('.').pop();
+            }
+
+            // do we need to show hoverbuttons?
+            if ($.v.config.hover || $.a.forceHover[tld]) {
+              // don't show on sites that have explicitly opted out
+              if ($.v.config.hover !== 'false') {
+                $.v.canHazHoverButtons = true;
+                // add one to button count for logging purposes
+                $.v.countButton = $.v.countButton + 1;
+                // we set this so our browser extensions know not to render hoverbuttons
+                $.d.b.setAttribute('data-pin-hover', true);
+                // on mouse over, check to see if this image should show a hoverbutton
+                $.f.listen($.d.b, 'mouseover', $.f.over);
+              }
             }
 
             // expose utility functions
@@ -1747,10 +1845,10 @@
     }())
   };
   $.f.init();
-}(window, document, {
+}(window, document, navigator, {
   'k': 'PIN_' + new Date().getTime(),
   // test version
-  'tv': '2016022503',
+  'tv': '2016111001',
   // we'll look for scripts whose source matches this, and extract config parameters
   'me': /pinit\.js$/,
   // pinterest domain regex
@@ -1760,16 +1858,20 @@
     'none': true,
     'nothing': true
   },
+  // entries here will have hoverbuttons on by default, off if they explicitly set data-pin-hover="false" on pinit.js
+  'forceHover': {
+    // 'ar': true
+  },
   // valid config parameters that may be passed as data-pin-* with your call to pinit.js
   'configParam': [
-    // set to "true" to show hoverbuttons
+    // set to "true" to show static Save buttons
+    'save',
+    // set to "true" to show hoverbuttons, "false" to force off
     'hover',
     // set to "red" or "white" to override gray Pin It button
     'color',
     // override language ("ja" only for Pin It button; any key in $.a.str for other widgets)
     'lang',
-    // override domain (allows pinning to www from a country we recognize by language)
-    'domain',
     // use custom HTML+CSS for your Pin It buttons
     'custom',
     // set to "true" to render tall Pin It buttons
@@ -1795,7 +1897,9 @@
     // legacy parameter for Pin It button height (please use data-pin-tall="true" instead)
     'height',
     // legacy parameter for Pin It button shape (please use data-pin-round="true" instead)
-    'shape'
+    'shape',
+    // use Save buttons
+    'save'
   ],
   // smallest image for which we will show a hoverbutton
   'hoverButtonMinImgSize': 119,
@@ -1847,6 +1951,7 @@
     // on click, if data-pin-log is this, run $.f.util[that]
     'embed_pin_toggle': 'menu',
     'embed_pin_play': 'play',
+    'embed_pin_native': 'native',
     'button_pinit': 'pinOne',
     'button_pinit_floating': 'pinOne',
     'button_pinit_bookmarklet': 'pinAny',
@@ -1861,110 +1966,172 @@
     'embed_pin_repin_medium': 'repin',
     'embed_pin_repin_large': 'repin'
   },
-  // default values
-  'defaults': {
-    'domain': 'www',
-    'strings': 'en',
-    'lang': 'en'
-  },
-  'validDomain': {
-    'br': 1,
-    'cz': 1,
-    'de': 1,
-    'dk': 1,
-    'es': 1,
-    'fi': 1,
-    'fr': 1,
-    'gb': 1,
-    'gr': 1,
-    'hu': 1,
-    'id': 1,
-    'in': 1,
-    'it': 1,
-    'jp': 1,
-    'kr': 1,
-    'nl': 1,
-    'no': 1,
-    'pl': 1,
-    'pt': 1,
-    'ro': 1,
-    'ru': 1,
-    'sk': 1,
-    'se': 1,
-    'tr': 1,
-    'uk': 1,
-    'www': 1
-  },
-  // best guess about the right language to show each domain on the list
-  // Languages codes match our strings, not what we think ought to be the language actually spoken by everyone who uses that domain.
-  'domainToLang': {
-    'ar': 'es',
-    'br': 'pt-br',
-    'cz': 'cs',
-    'de': 'de',
-    'dk': 'da',
-    'es': 'es',
-    'mx': 'es',
-    'co': 'es',
-    'cl': 'es',
-    'fi': 'fi',
-    'fr': 'fr',
-    'gb': 'en',
-    'gr': 'el',
-    'hu': 'hu',
-    'id': 'id',
-    'in': 'hi',
-    'it': 'it',
-    'jp': 'ja',
-    'kr': 'ko',
-    'nl': 'nl',
-    'no': 'nb',
-    'pl': 'pl',
-    'pt': 'pt',
-    'ro': 'ro',
-    'ru': 'ru',
-    'sk': 'sk',
-    'se': 'sv',
-    'tr': 'tr',
-    'uk': 'en',
-    'www': 'en'
-  },
-  // best guesses about what domain to show each language
-  'langToDomain': {
-    'en': 'www',
-    'en-gb': 'uk', // not GB, because GB redirects to UK
-    'en-ie': 'uk', // not GB, because Ireland is not part of GB
-    'en-uk': 'uk',
-    'cs': 'cz',
-    'de': 'de',
-    'da': 'dk',
-    'es': 'es',
-    'fi': 'fi',
-    'fr': 'fr',
-    'fr-ca': 'www', // French from Canada gets www
-    'el': 'gr',
-    'hu': 'hu',
-    'id': 'id',
-    'hi': 'in',
-    'it': 'it',
-    'ja': 'jp', // correct for Japanese
-    'jp': 'jp', // common mistake for Japanese
-    'ko': 'kr', // correct for Korean
-    'kr': 'kr', // common mistake for Korean
-    'ms': 'www',
-    'nl': 'nl',
-    'nb': 'no',
-    'pl': 'pl',
-    'pt': 'pt',
-    'pt-br': 'br', // Brazilian Portuguese
-    'ro': 'ro',
-    'ru': 'ru',
-    'sk': 'sk',
-    'tl': 'www', // Tagalog (Philippines)
-    'th': 'www', // Thai
-    'tr': 'tr',
-    'uk': 'www', // Ukrainian
-    'vn': 'www' // Vietnamese
+  'save': {
+    'domain': {
+      'www': true,
+      'uk': true,
+      'br': true,
+      'jp': true,
+      'fr': true,
+      'es': true,
+      'pl': true,
+      'de': true,
+      'ru': true,
+      'it': true,
+      'au': true,
+      'nl': true,
+      'tr': true,
+      'id': true,
+      'hu': true,
+      'pt': true,
+      'se': true,
+      'cz': true,
+      'gr': true,
+      'kr': true,
+      'ro': true,
+      'dk': true,
+      'sk': true,
+      'fi': true,
+      'in': true,
+      'no': true,
+      'za': true,
+      'nz': true
+    },
+    'lookup': {
+      // alt location: cs
+      'cs': {
+        'd': 'cz'
+      },
+      // alt location: dk
+      'da': {
+        'd': 'dk'
+      },
+      // default de / de-de; alt de-at
+      'de': {
+        'alt': {
+          // Austria
+          'at': 'de'
+        }
+      },
+      // alt locale: gr; Greece also gets requests for el-cy
+      'el': {
+        'd': 'gr',
+        'alt': {
+          // Cyprus
+          'cy': 'gr'
+        }
+      },
+      // English has many alt domains
+      'en': {
+        'alt': {
+          // Australia
+          'au': 'au',
+          // Great Britain
+          'gb': 'uk',
+          // Ireland
+          'ie': 'uk',
+          // India
+          'in': 'in',
+          // New Zealand
+          'nz': 'nz',
+          // United Kingdom
+          'uk': 'uk',
+          // South Africa
+          'za': 'za'
+        }
+      },
+      // Spanish also has many alt domains
+      'es': {
+        'alt': {
+          // Latin America
+          '419': 'www',
+          // Argentina
+          'ar': 'www',
+          // Chile
+          'cl': 'www',
+          // Columbia
+          'co': 'www',
+          // Latin America
+          'la': 'www',
+          // Mexico
+          'mx': 'www',
+          // Peru
+          'pe': 'www',
+          // USA
+          'us': 'www',
+          // Uruguay
+          'uy': 'www',
+          // Venezuela
+          've': 'www',
+          // Latin America
+          'xl': 'www'
+        }
+      },
+      // Finnish: fi and fi-fi work; all others go to lang-domain
+      'fi': true,
+      // French: auto-default to France, but do the right things for Belgium and Canada
+      'fr': {
+        'alt': {
+          'be': 'fr',
+          'ca': 'www'
+        }
+      },
+      // Hindu: redirect to India (so does en-in)
+      'hi': {
+        'd': 'in'
+      },
+      'hu': true,
+      'id': true,
+      'it': true,
+      'ja': {
+        'd': 'jp'
+      },
+      'ko': {
+        'd': 'kr'
+      },
+      // Malaysian: send to WWW
+      'ms': {
+        'd': 'www'
+      },
+      'nl': {
+        'alt': {
+          'be': 'nl'
+        }
+      },
+      'nb': {
+        'd': 'no'
+      },
+      'pl': true,
+      'pt': {
+        'alt': {
+          // Brazil
+          'br': {
+            'd': 'br',
+            's': 'pt-br'
+          }
+        }
+      },
+      'ro': true,
+      'ru': true,
+      'sk': true,
+      'sv': {
+        'd': 'se'
+      },
+      'tl': {
+        'd': 'www'
+      },
+      'th': {
+        'd': 'www'
+      },
+      'tr': {
+        'alt': {
+          // Cyprus
+          'cy': 'tr'
+        }
+      },
+      'uk': true,
+      'vi': true
+    }
   },
   // translated strings - replace %s with the Pinterest logotype
   'strings': {
@@ -1973,207 +2140,252 @@
       'followOn': 'Sledujte na %s',
       'from': 'od %s',
       'report': 'Probl&#233;m s autorsk&#253;mi pr&#225;vy',
-      'by': 'od %s'
+      'by': 'od %s',
+      'save': 'Ulo&#382;it'
     },
     // Danish
     'da': {
       'followOn': 'F&#248;lg p&#229; %s',
       'from': 'fra %s',
       'report': 'Problemer med ophavsret',
-      'by': 'af %s'
+      'by': 'af %s',
+      'save': 'Gem'
     },
     // German
     'de': {
-      'followOn': 'Auf folgen %s',
+      'followOn': ' %s',
       'from': 'von %s',
       'report': 'Urheberrechtsverletzung',
-      'by': 'von %s'
+      'by': 'von %s',
+      'save': 'Merken'
     },
     // Greek
     'el': {
       'followOn': '&#913;&#954;&#959;&#955;&#959;&#965;&#952;&#942;&#963;&#964;&#949; &#956;&#945;&#962; &#963;&#964;&#959; %s',
       'from': '&#945;&#960;&#972; &#964;&#959; %s',
       'report': '&#918;&#942;&#964;&#951;&#956;&#945; &#960;&#957;&#949;&#965;&#956;&#945;&#964;&#953;&#954;&#974;&#957; &#948;&#953;&#954;&#945;&#953;&#969;&#956;&#940;&#964;&#969;&#957;',
-      'by': '&alpha;&pi;&omicron;&delta;&#943;&delta;&epsilon;&tau;&alpha;&iota; &sigma;&tau;&omicron; %s'
+      'by': '&alpha;&pi;&omicron;&delta;&#943;&delta;&epsilon;&tau;&alpha;&iota; &sigma;&tau;&omicron; %s',
+      'save': '&Kappa;&rho;&#940;&tau;&alpha; &tau;&omicron;'
     },
     // English
     'en': {
       'followOn': 'Follow On %s',
       'from': 'from %s',
       'report': 'Copyright issue',
-      'by': 'by %s'
+      'by': 'by %s',
+      'save': 'Save'
     },
     // Spanish
     'es': {
       'followOn': 'Seguir en %s',
       'from': 'de %s',
       'report': 'Problema de copyright',
-      'by': 'por %s'
+      'by': 'por %s',
+      'save': 'Guardar'
     },
     // Finnish
     'fi': {
       'followOn': 'Seuraa %s',
       'from': 'palvelusta %s',
       'report': 'Tekij&#228;noikeusloukkaus',
-      'by': 'tekij&#228; %s'
+      'by': 'tekij&#228; %s',
+      'save': 'Tallenna'
     },
     // French
     'fr': {
       'followOn': 'Suivre sur %s',
       'from': '&#224; partir de %s',
       'report': 'Probl&#232;me de droits d\'auteur',
-      'by': 'par %s'
+      'by': 'par %s',
+      'save': 'Enregistrer'
     },
     // Hindu
     'hi': {
       'followOn': '%s &#2346;&#2375; &#2347;&#2377;&#2354;&#2379; &#2325;&#2352;&#2375;&#2306;',
       'from': '%s &#2360;&#2375;',
       'report': '&#2325;&#2377;&#2346;&#2368;&#2352;&#2366;&#2311;&#2335; &#2325;&#2366; &#2350;&#2369;&#2342;&#2381;&#2342;&#2366;',
-      'by': '&#2325;&#2379; &#2358;&#2381;&#2352;&#2375;&#2351; &#2342;&#2375;&#2344;&#2366; %s'
+      'by': '&#2325;&#2379; &#2358;&#2381;&#2352;&#2375;&#2351; &#2342;&#2375;&#2344;&#2366; %s',
+      'save': '&#2360;&#2375;&#2357; &#2325;&#2352;&#2375;&#2306;'
     },
     // Hungarian
     'hu': {
       'followOn': 'K&#246;vesd a %s',
       'from': 'innen: %s',
       'report': 'Szerz&#337;i jogi probl&#233;ma',
-      'by': 'Hozz&aacute;rendelve a k&ouml;vetkez&#337;h&ouml;z: %s'
+      'by': 'Hozz&aacute;rendelve a k&ouml;vetkez&#337;h&ouml;z: %s',
+      'save': 'Ment&eacute;s'
     },
     // Indonesian
     'id': {
       'followOn': 'Ikuti di Pinterest %s',
       'from': 'dari %s',
       'report': 'Masalah hak cipta',
-      'by': 'oleh %s'
+      'by': 'oleh %s',
+      'save': 'Simpan'
     },
     // Italian
     'it': {
       'followOn': 'Segui su %s',
       'from': 'da %s',
       'report': 'Problema di copyright',
-      'by': 'da %s'
-    },
-    // Korean
-    'ko': {
-      'followOn': '%s &#50640;&#49436; &#54036;&#47196;&#50864;',
-      'from': '%s &#50640;&#49436;',
-      'report': '&#51200;&#51089;&#44428; &#47928;&#51228;',
-      'by': '&#51060; &#54592;&#54632; %s'
+      'by': 'da %s',
+      'save': 'Salva'
     },
     // Japanese
     'ja': {
       'followOn': '%s &#12391;&#12501;&#12457;&#12525;&#12540;',
       'from': '&#12500;&#12531;&#12418;&#12392;&#65306; %s',
       'report': '&#33879;&#20316;&#27177;&#12395;&#12388;&#12356;&#12390;&#22577;&#21578;&#12377;&#12427;',
-      'by': '%s'
+      'by': '%s',
+      'save': '&#20445;&#23384;'
+    },
+    // Korean
+    'ko': {
+      'followOn': '%s &#50640;&#49436; &#54036;&#47196;&#50864;',
+      'from': '%s &#50640;&#49436;',
+      'report': '&#51200;&#51089;&#44428; &#47928;&#51228;',
+      'by': '&#51060; &#54592;&#54632; %s',
+      'save': '&#51200;&#51109;'
     },
     // Malaysian
     'ms': {
       'followOn': 'Ikut di %s',
       'from': 'dari %s',
       'report': 'Isu hak cipta',
-      'by': 'attribut ke %s'
+      'by': 'attribut ke %s',
+      'save': 'Simpan'
     },
     // Norwegian
     'nb': {
       'followOn': 'F&#248;lg p&#229; %s',
       'from': 'fra %s',
       'report': 'Opphavsrettslig problem',
-      'by': 'av %s'
+      'by': 'av %s',
+      'save': 'Lagre'
     },
     // Dutch
     'nl': {
       'followOn': 'Volgen op %s',
       'from': 'van %s',
       'report': 'Probleem met copyright',
-      'by': 'door %s'
+      'by': 'door %s',
+      'save': 'Bewaren'
     },
     // Polish
     'pl': {
       'followOn': 'Obserwuj na %s',
       'from': 'od %s',
       'report': 'Problem z prawami autorskimi',
-      'by': 'przez'
+      'by': 'przez',
+      'save': 'Zapisz'
     },
     // Portuguese
     'pt': {
       'followOn': 'Seguir no %s',
       'from': 'de %s',
       'report': 'Assunto relativo a direitos de autor',
-      'by': 'por %s'
+      'by': 'por %s',
+      'save': 'Guardar'
     },
     // Portuguese (Brazil)
     'pt-br': {
-      'followOn': 'Seguir no %s',
+      'followOn': 'Siga no %s',
       'from': 'de %s',
       'report': 'Problema de direitos autorais',
-      'by': 'por %s'
+      'by': 'por %s',
+      'save': 'Salvar'
     },
     // Romanian
     'ro': {
       'followOn': 'Urm&#259;re&#537;te pe %s',
       'from': 'de la %s',
       'report': 'Problem&#259; legat&#259; de drepturile de autor',
-      'by': 'de la %s'
+      'by': 'de la %s',
+      'save': 'Salveaz&#259;'
     },
     // Russian
     'ru': {
       'followOn': '&#1055;&#1086;&#1076;&#1087;&#1080;&#1089;&#1072;&#1090;&#1100;&#1089;&#1103; &#1074; %s',
       'from': '&#1080;&#1079; %s',
       'report': '&#1042;&#1086;&#1087;&#1088;&#1086;&#1089; &#1086;&#1073; &#1072;&#1074;&#1090;&#1086;&#1088;&#1089;&#1082;&#1080;&#1093; &#1087;&#1088;&#1072;&#1074;&#1072;&#1093;',
-      'by': '&#1087;&#1086;&#1083;&#1100;&#1079;&#1086;&#1074;&#1072;&#1090;&#1077;&#1083;&#1077;&#1084; %s'
+      'by': '&#1087;&#1086;&#1083;&#1100;&#1079;&#1086;&#1074;&#1072;&#1090;&#1077;&#1083;&#1077;&#1084; %s',
+      'save': '&#1057;&#1086;&#1093;&#1088;&#1072;&#1085;&#1080;&#1090;&#1100;'
     },
     // Slovak
     'sk': {
       'followOn': 'Sledujte na %s',
       'from': 'od %s',
       'report': 'Probl&#233;m s autorsk&#253;mi pr&#225;vami',
-      'by': 'od %s'
+      'by': 'od %s',
+      'save': 'Ulo&#382;i&#357;'
     },
     // Swedish
     'sv': {
       'followOn': 'F&#246;lj p&#229; %s',
       'from': 'fr&#229;n %s',
       'report': 'Upphovsr&#228;ttsligt problem',
-      'by': 'av %s'
+      'by': 'av %s',
+      'save': 'Spara'
     },
     // Tagalog
     'tl': {
       'followOn': 'Sundan sa %s',
       'from': 'galing sa %s',
       'report': 'Isyu sa copyright',
-      'by': '%s'
+      'by': '%s',
+      'save': 'I-save'
     },
     // Thai
     'th': {
       'followOn': '&#3605;&#3636;&#3604;&#3605;&#3634;&#3617;&#3651;&#3609; %s',
       'from': '&#3592;&#3634;&#3585; %s',
       'report': '&#3611;&#3633;&#3597;&#3627;&#3634;&#3648;&#3619;&#3639;&#3656;&#3629;&#3591;&#3621;&#3636;&#3586;&#3626;&#3636;&#3607;&#3608;&#3636;&#3660;',
-      'by': '&#3648;&#3586;&#3637;&#3618;&#3609;&#3650;&#3604;&#3618; %s'
+      'by': '&#3648;&#3586;&#3637;&#3618;&#3609;&#3650;&#3604;&#3618; %s',
+      'save': '&#3610;&#3633;&#3609;&#3607;&#3638;&#3585;'
     },
     // Turkish
     'tr': {
       'followOn': '%s takip et',
       'from': '%s sitesinden',
-      'report': 'Telif hakkı sorunu',
-      'by': 'taraf&#305;ndan %s'
+      'report': 'Telif hakk&#305; sorunu',
+      'by': 'taraf&#305;ndan %s',
+      'save': 'Kaydet'
     },
     // Ukrainian
     'uk': {
       'followOn': '&#1055;&#1086;&#1076;&#1087;&#1080;&#1089;&#1072;&#1090;&#1100;&#1089;&#1103; &#1074; %s',
       'from': '&#1074;&#1110;&#1076; %s',
       'report': '&#1055;&#1088;&#1086;&#1073;&#1083;&#1077;&#1084;&#1072; &#1079;&#1072;&#1093;&#1080;&#1089;&#1090;&#1091; &#1072;&#1074;&#1090;&#1086;&#1088;&#1089;&#1100;&#1082;&#1080;&#1093; &#1087;&#1088;&#1072;&#1074;',
-      'by': '&#1086;&#1087;&#1080;&#1089; %s'
+      'by': '&#1086;&#1087;&#1080;&#1089; %s',
+      'save': '&#1047;&#1073;&#1077;&#1088;&#1077;&#1075;&#1090;&#1080;'
     },
     // Vietnamese
     'vi': {
       'followOn': 'Theo d&#245;i tr&#234;n %s',
       'from': 't&#7915; %s',
       'report': 'V&#7845;n &#273;&#7873; v&#7873; b&#7843;n quy&#7873;n',
-      'by': '&#273;&#432;a v&agrave;o %s'
+      'by': '&#273;&#432;a v&agrave;o %s',
+      'save': 'L&#432;u'
     }
   },
   // paths, sizes, and colors for SVGs
   'svg': {
+    // native video player
+    'native': {
+      'w': '63',
+      'h': '63',
+      'x1': '0',
+      'y1': '0',
+      'x2': '64',
+      'y2': '64',
+      'p': [ {
+        'f': '000',
+        'd': 'M 32 32 m -32, 0 a 31, 31 0 1, 0 63, 0 a 31, 31 0 1,0 -63, 0 z'
+      }, {
+        'f': 'fff',
+        'd': 'M 25 19 L 48 32  L 25 45 Z'
+      }]
+    },
     // pin count bubble; shows above
     'above': {
       'w': '114',
@@ -2203,9 +2415,15 @@
     'logo': {
       'w': '30',
       'h': '30',
+      'x1': '-1',
+      'y1': '-1',
+      'x2': '31',
+      'y2': '31',
       // logo has two shapes: white background and red foreground
       'p': [ {
         'f': 'fff',
+        's': 'fff',
+        'w': '1',
         'd': 'M29.449,14.662 C29.449,22.722 22.868,29.256 14.75,29.256 C6.632,29.256 0.051,22.722 0.051,14.662 C0.051,6.601 6.632,0.067 14.75,0.067 C22.868,0.067 29.449,6.601 29.449,14.662'
       }, {
         'f': 'bd081c',
@@ -2491,7 +2709,7 @@
           'border-bottom': '1px solid rgba(0, 0, 0, 0.09)',
           '._container': {
             'width': '100%',
-            '._img, ._iframe': {
+            '._img, ._iframe, ._video': {
               'width': '100%',
               'height': '100%',
               'position': 'absolute',
@@ -2499,6 +2717,17 @@
               'background': 'transparent url() 0 0 no-repeat',
               'background-size': 'cover',
               'border': 'none'
+            },
+            '._native': {
+              'height': '64px',
+              'width': '64px',
+              'background': 'transparent url(%native%) 0 0 no-repeat',
+              'position': 'absolute',
+              'top': '50%',
+              'left': '50%',
+              'margin-top': '-32px',
+              'margin-left': '-32px',
+              'opacity': '.75'
             },
             '._control': {
               'width': '50px',
@@ -2538,9 +2767,19 @@
             'left': '10px',
             'height': '28px',
             'width': '56px',
-            'background': '#bd081c url(%pinit_en_white%) 50% 50% no-repeat',
-            'background-size': '70%',
-            'border-radius': '%buttonBorderRadiusTall%'
+            'color': '#fff',
+            'background': '#bd081c url(%logo%) 5px 50% no-repeat',
+            'background-size': '18px 18px',
+            'text-indent': '28px',
+            'font': '14px/28px "Helvetica Neue", Helvetica, Arial, "sans-serif"',
+            'font-weight': 'bold',
+            'border-radius': '4px',
+            'padding': '0 6px 0 0',
+            'width': 'auto',
+            '&:hover': {
+              'background-color': '#aa0719',
+              'box-shadow': 'none'
+            }
           }
         },
         '._source': {
@@ -2715,16 +2954,15 @@
       },
       // Japanese asset for Pin It button
       '&._ja ._bd ._hd ._repin': {
-        'background-image': 'url(%pinit_ja_white%)'
+        'background-image': 'url(%pinit_ja_white%)',
+        '&._save': {
+          'background': '#bd081c url(%logo%) 5px 50% no-repeat',
+          'background-size': '16px 16px'
+        }
       },
       '&._medium': {
         'min-width': '237px',
-        'max-width': '345px',
-        '._bd ._hd ._repin': {
-          'height': '32px',
-          'width': '64px',
-          'background-size': '65%'
-        }
+        'max-width': '345px'
       },
       '&._large': {
         'min-width': '345px',
@@ -2736,15 +2974,12 @@
           '._hd': {
             'padding-top': '50px',
             'border-bottom': 'none',
-            '._container ._img': {
+            '._container ._img, ._container ._video': {
               'border-radius': '8px'
             },
             '._repin': {
               'top': '0px',
-              'left': '0px',
-              'height': '36px',
-              'width': '72px',
-              'background-size': '65%'
+              'left': '0px'
             }
           },
           '._source': {
@@ -2900,6 +3135,71 @@
       '&._white': {
         'background-color': '#fff'
       },
+      '&._save': {
+        '&:hover': {
+          'background-color': '#aa0719',
+          'box-shadow': 'none'
+        },
+        'border-radius': '2px',
+        'text-indent': '20px',
+        'width': 'auto',
+        'padding': '0 4px 0 0',
+        'text-align': 'center',
+        'font': '11px/20px "Helvetica Neue", Helvetica, sans-serif',
+        'font-weight': 'bold',
+        'color': '#fff',
+        'background': '#bd081c url(%logo%) 3px 50% no-repeat',
+        'background-size': '14px 14px',
+        'font-weight': 'bold',
+        '-webkit-font-smoothing': 'antialiased',
+        '._count': {
+          'text-indent': '0',
+          'position': 'absolute',
+          'color': '#555',
+          'background': '#efefef',
+          'border-radius': '2px',
+          // fang
+          '&::before' : {
+            'content': '""',
+            'position': 'absolute'
+          }
+        },
+        '&._beside': {
+          '._count': {
+            'right': '-46px',
+            'height': '20px',
+            'width': '40px',
+            'font-size': '10px',
+            'line-height': '20px',
+            '&::before' : {
+              'top': '3px',
+              'left': '-4px',
+              'border-right': '7px solid #efefef',
+              'border-top': '7px solid transparent',
+              'border-bottom': '7px solid transparent'
+            }
+          }
+        },
+        '&._above': {
+          '._count': {
+            'top': '-36px',
+            'width': '100%',
+            'height': '30px',
+            'font-size': '10px',
+            'line-height': '30px',
+            '&::before' : {
+              'bottom': '-4px',
+              'left': '4px',
+              'border-top': '7px solid #efefef',
+              'border-right': '7px solid transparent',
+              'border-left': '7px solid transparent'
+            }
+          },
+          '&._padded': {
+            'margin-top': '28px'
+          }
+        }
+      },
       '&._tall': {
         'height': '28px',
         'width': '56px',
@@ -2934,6 +3234,60 @@
           },
           '&._padded': {
             'margin-right': '63px'
+          }
+        },
+        '&._save': {
+          'border-radius': '4px',
+          'width': 'auto',
+          'background-position-x': '6px',
+          'background-size': '18px 18px',
+          'text-indent': '29px',
+          'font': '14px/28px "Helvetica Neue", Helvetica, Arial, "sans-serif"',
+          'font-weight': 'bold',
+          'padding': '0 6px 0 0',
+          '._count': {
+            'position': 'absolute',
+            'color': '#555',
+            'font-size': '12px',
+            'text-indent': '0',
+            'background': '#efefef',
+            'border-radius': '4px',
+            '&::before' : {
+              'content': '""',
+              'position': 'absolute'
+            }
+          },
+          '&._above': {
+            '._count': {
+              'font-size': '14px',
+              'top': '-50px',
+              'width': '100%',
+              'height': '44px',
+              'line-height': '44px',
+              '&::before' : {
+                'bottom': '-4px',
+                'left': '7px',
+                'border-top': '7px solid #efefef',
+                'border-right': '7px solid transparent',
+                'border-left': '7px solid transparent'
+              }
+            }
+          },
+          '&._beside': {
+            '._count': {
+              'font-size': '14px',
+              'right': '-63px',
+              'width': '56px',
+              'height': '28px',
+              'line-height': '28px',
+              '&::before' : {
+                'top': '7px',
+                'left': '-4px',
+                'border-right': '7px solid #efefef',
+                'border-top': '7px solid transparent',
+                'border-bottom': '7px solid transparent'
+              }
+            }
           }
         }
       },
