@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// support native video; update strings
+// don't log from our networks
 
 (function (w, d, n, a) {
   var $ = w[a.k] = {
@@ -395,23 +395,26 @@
 
         // send logging information
         log: function (str) {
-          // query always starts with guid
-          var query = '?guid=' + $.v.guid;
-          // add test version if found
-          if ($.a.tv) {
-            query = query + '&tv=' + $.a.tv;
+          // don't log from our networks
+          if (!$.v.here.match(/^https?:\/\/(.*?\.|)(pinterest|pinadmin)\.com\//)) {
+            // query always starts with guid
+            var query = '?guid=' + $.v.guid;
+            // add test version if found
+            if ($.a.tv) {
+              query = query + '&tv=' + $.a.tv;
+            }
+            // add optional string &foo=bar
+            if (str) {
+              query = query + str;
+            }
+            // add user-specified logging tag, if present
+            if ($.v.config.tag) {
+              query = query + '&tag=' + $.v.config.tag;
+            }
+            // add the page we're looking at right now
+            query = query + '&via=' + encodeURIComponent($.v.here);
+            $.f.call($.a.endpoint.log + query);
           }
-          // add optional string &foo=bar
-          if (str) {
-            query = query + str;
-          }
-          // add user-specified logging tag, if present
-          if ($.v.config.tag) {
-            query = query + '&tag=' + $.v.config.tag;
-          }
-          // add the page we're looking at right now
-          query = query + '&via=' + encodeURIComponent($.v.here);
-          $.f.call($.a.endpoint.log + query);
         },
 
         // build a query
@@ -1848,7 +1851,7 @@
 }(window, document, navigator, {
   'k': 'PIN_' + new Date().getTime(),
   // test version
-  'tv': '2016111001',
+  'tv': '2017042001',
   // we'll look for scripts whose source matches this, and extract config parameters
   'me': /pinit\.js$/,
   // pinterest domain regex
