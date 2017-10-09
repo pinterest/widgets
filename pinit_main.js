@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// don't log from our networks
+// fix round buttons
 
 (function (w, d, n, a) {
   var $ = w[a.k] = {
@@ -320,7 +320,6 @@
             '%native%': $.f.makeSVG($.a.svg.native),
             '%above%': $.f.makeSVG($.a.svg.above),
             '%beside%': $.f.makeSVG($.a.svg.beside),
-            '%likes%': $.f.makeSVG($.a.svg.likes),
             '%repins%': $.f.makeSVG($.a.svg.repins),
             '%menu%': $.f.makeSVG($.a.svg.menu),
             '%logo%': $.f.makeSVG($.a.svg.logo),
@@ -487,6 +486,12 @@
                 $.f.util.pinAny();
               }
             }
+
+            if (o.v && o.v.preventDefault) {
+              o.v.preventDefault();
+            } else {
+              $.w.event.returnValue = false;
+            }
           },
           // open repin dialog from hoverbutton
           repinHoverButton: function (id) {
@@ -553,11 +558,19 @@
         // build a complex element from a JSON template
         buildOne: function (obj, el) {
           if (!el) {
-            var root = $.f.make({
-              'SPAN':{
+            var opts = {};
+            // Add links to buttons for SEO.
+            if (obj.tagName === 'A' && obj.href) {
+              opts.A = {
+                'className': $.a.k + '_' + obj.className.replace(/ /g, ' ' + $.a.k + '_'),
+                'href': obj.href
+              };
+            } else {
+              opts.SPAN = {
                 'className': $.a.k + '_' + obj.className.replace(/ /g, ' ' + $.a.k + '_')
-              }
-            });
+              };
+            }
+            var root = $.f.make(opts);
             $.f.buildOne(obj, root);
             return root;
           } else {
@@ -668,7 +681,7 @@
               $.f.log('&type=' + log + x + '&href=' + encodeURIComponent(href));
               if (typeof $.f.util[$.a.util[log]] === 'function') {
                 // got a special utility handler? run it
-                $.f.util[$.a.util[log]]({'el': el, 'href': href});
+                $.f.util[$.a.util[log]]({'el': el, 'href': href, 'v': v});
               } else {
                 if (href) {
                   // some elements are controls, like pause/play and menu toggle; they won't open new pages
@@ -823,7 +836,7 @@
           el = $.f.getEl(t);
           if (el) {
             src = $.f.getData(el, 'media') || el.src;
-            if (el.tagName === 'IMG' && src && !src.match(/^data/) && !$.f.getData(el, 'no-hover') && !$.f.get(el, 'nopin') && !$.f.getData(el, 'nopin')) {
+            if (el.tagName === 'IMG' && src && !src.match(/^data/) && !src.match(/\.webp/) && !$.f.getData(el, 'no-hover') && !$.f.get(el, 'nopin') && !$.f.getData(el, 'nopin')) {
               // we are inside an image
               if (!$.v.hazHoverButton) {
                 // show the hoverbutton
@@ -879,6 +892,7 @@
               template.id = options.id;
             }
             if (options.log === 'button_pinit') {
+              template.tagName = 'A';
               template.href = $.v.config.pinterest + '/pin/create/button/?guid=' + $.v.guid + '-' + $.v.countButton + '&url=' + encodeURIComponent(options.url) + '&media=' + encodeURIComponent(options.media) + '&description=' + encodeURIComponent(options.description);
             }
             if (options.log === 'button_pinit_bookmarklet') {
@@ -903,13 +917,17 @@
               }
             }
 
-            if (options.save === 'true') {
-              template.className = template.className + ' save';
-              template.text = $.a.strings[options.lang].save || $.a.strings[$.v.config.lang].save;
+            // round buttons require no innerHTML
+            if (options.round) {
+              template.className = template.className + ' round';
             } else {
-              if (options.round) {
-                template.className = template.className + ' round';
+              // data-pin-save="false" gets a Pin It button
+              // instead of data-pin-save="true" getting a Save button (breaking change, 20171003)
+              if (options.save !== 'false') {
+                template.className = template.className + ' save';
+                template.text = $.a.strings[options.lang].save || $.a.strings[$.v.config.lang].save;
               } else {
+                // we're going to make an old-school Pin It button
                 if (options.lang === 'ja') {
                   template.className = template.className + ' ja';
                 }
@@ -1159,7 +1177,7 @@
                   'href': p.pinner.profile_url.replace(/https?:\/\/www\.pinterest\.com\//, $.v.config.pinterest + '/'),
                   'log': 'embed_pin_pinner' + widthMod,
                   'img': {
-                    'backgroundImage': p.pinner.image_small_url.replace(/30/, '60')
+                    'backgroundImage': p.pinner.image_small_url.replace(/_30.jpg/, '_60.jpg')
                   },
                   'pinner': {
                     'text': p.pinner.full_name
@@ -1211,19 +1229,13 @@
                   'mp4': p.videos.video_list.V_720P.url
                 };
               }
-              // repins / likes
-              if (p.repin_count || p.like_count) {
+              // repins
+              if (p.repin_count) {
                 template.bd.stats = {};
                 if (p.repin_count) {
                   template.bd.stats.repins = {
                     'text': '' + p.repin_count,
                     'href': $.v.config.pinterest + '/pin/' + p.id + '/repins/'
-                  }
-                }
-                if (p.like_count) {
-                  template.bd.stats.likes = {
-                    'text': '' + p.like_count,
-                    'href': $.v.config.pinterest + '/pin/' + p.id + '/likes/'
                   }
                 }
               }
@@ -1308,7 +1320,7 @@
         seek: {
           buttonPin: function (a) {
 
-            var p, o, r, k;
+            var p, o, k, cf;
 
             // community-generated standard: data-pin-do="none" means "don't render a button here"
             if ($.a.noneParam[$.f.getData(a, 'do')] === true) {
@@ -1321,6 +1333,8 @@
               p = $.f.parse(a.href, {'url': true, 'media': true, 'description': true});
             }
 
+            cf = $.f.getData(a, 'custom');
+
             // get all the things
             o = {
               'do': $.f.getData(a, 'do'),
@@ -1328,7 +1342,7 @@
               'url': $.f.getData(a, 'url') || p.url || $.d.URL,
               'media': $.f.getData(a, 'media') || p.media,
               'description': $.f.getData(a, 'description') || p.description || $.d.title,
-              'custom': $.f.getData(a, 'custom') || $.v.config.custom,
+              'custom': cf || $.v.config.custom,
               'count': $.f.getData(a, 'count') || $.v.config.count,
               'color': $.f.getData(a, 'color') || $.v.config.color,
               'round': $.f.getData(a, 'round') || $.v.config.round,
@@ -1336,6 +1350,21 @@
               'lang': $.f.getData(a, 'lang') || $.v.config.lang,
               'save': $.f.getData(a, 'save') || $.v.config.save
             };
+
+            // add global custom flag to log
+            if ($.v.config.custom) {
+              $.v.log.customGlobal = 1;
+            }
+
+            // add local custom flag to log
+            if (cf) {
+              $.v.log.customLocal = 1;
+            }
+
+            // change save flag to pinit (breaking change, 20171003)
+            if ($.v.config.save === 'false') {
+              $.v.log.pinit = 1;
+            }
 
             $.f.checkLang(o);
 
@@ -1352,7 +1381,6 @@
                 o.log = 'button_pinit_bookmarklet';
               }
             }
-
             // increment here so we count custom buttons
             $.v.countButton = $.v.countButton + 1;
 
@@ -1390,7 +1418,6 @@
                 $.f.replace(a, s);
               }
             }
-
           },
           buttonBookmark: function (a) {
             if ($.f.getData(a, 'custom')) {
@@ -1404,82 +1431,47 @@
             }
           },
           buttonFollow: function (a) {
-            var p, k, o, r, href;
+            var p, o, r, href;
             r = {};
             o = {
               'custom': $.f.getData(a, 'custom'),
               'tall': $.f.getData(a, 'tall'),
               'lang': $.f.getData(a, 'lang') || $.v.config.lang
             };
-
             $.f.checkLang(o);
-
-            p = a.href.split('pinterest.com/');
-            if (p[1]) {
-              k = p[1].split('/');
-              if (k[0]) {
-                r.name = a.innerHTML;
-                r.id = k[0];
-                if (k[0] && k[1]) {
-                  r.id = k[0] + '/' + k[1];
-                }
-                if (o.custom) {
-                  if (r.id.match(/\//)) {
-                    // found a forward-slash? follow a board
-                    href = $.v.config.pinterest + '/' + r.id + '/follow/?guid=' + $.v.guid;
-                  } else {
-                    // no forward-slash? follow a pinner
-                    href = $.v.config.pinterest + '/' + r.id + '/pins/follow/?guid=' + $.v.guid;
-                  }
-                  $.f.set(a, 'data-pin-href', href);
-                  $.f.set(a, 'data-pin-log', 'button_follow');
-                  $.w.setTimeout(function () {
-                    a.removeAttribute('href');
-                  }, 1);
-                  $.f.debug('Found a link with data-pin-custom="true"');
-                  return;
+            p = $.f.getPath(a.href);
+            if (p.length) {
+              r.name = a.textContent;
+              r.id = p[0];
+              // shall we follow a board?
+              if (p[0] && p[1]) {
+                r.id = p[0] + '/' + p[1];
+              }
+              if (o.custom) {
+                if (r.id.match(/\//)) {
+                  // found a forward-slash? follow a board
+                  href = $.v.config.pinterest + '/' + r.id + '/follow/?guid=' + $.v.guid;
                 } else {
-                  var s = $.f.structure.buttonFollow(r, o);
-                  $.f.replace(a, s);
+                  // no forward-slash? follow a pinner
+                  href = $.v.config.pinterest + '/' + r.id + '/pins/follow/?guid=' + $.v.guid;
                 }
+                $.f.set(a, 'data-pin-href', href);
+                $.f.set(a, 'data-pin-log', 'button_follow');
+                $.w.setTimeout(function () {
+                  a.removeAttribute('href');
+                }, 1);
+                $.f.debug('Found a link with data-pin-custom="true"');
+                return;
+              } else {
+                $.f.replace(a, $.f.structure.buttonFollow(r, o));
               }
             }
           },
-          embedBoard: function (a) {
-            var p, k, u, o, w, bs;
-            p = a.href.split('#')[0].split('?')[0].split('pinterest.com/');
-            if (p[1]) {
-              k = p[1].split('/');
-              if (k[0] && k[1]) {
-                u = k[0] + '/' + k[1];
-                o = {
-                  'columns': $.f.getData(a, 'columns') || $.v.config.grid.columns,
-                  'height': $.f.getData(a, 'height') - 0 || $.v.config.grid.height,
-                  'width': $.f.getData(a, 'width') || null,
-                  'noscroll': $.f.getData(a, 'noscroll') || null,
-                  'lang': $.f.getData(a, 'lang') || $.v.config.lang
-                };
-
-                $.f.checkLang(o);
-
-                $.f.getLegacy.grid(a, o);
-
-                bs = '';
-                if ($.w.location.protocol === 'https:') {
-                  bs='&base_scheme=https';
-                }
-
-                $.f.call($.a.endpoint.board.replace(/%s/, u) + '?sub=' + $.v.domain + bs, function (r) {
-                  $.f.replace(a, $.f.structure.embedGrid(r, o));
-                });
-              }
-            }
-          },
-          embedUser: function (a) {
-            var p, k, u, o, bs;
-            p = a.href.split('#')[0].split('?')[0].split('pinterest.com/');
-            if (p[1]) {
-              k = p[1].split('/');
+          embedBoard: function (a, href) {
+            var p, u, o, bs;
+            p = $.f.getPath(href);
+            if (p.length > 1) {
+              u = p[0] + '/' + p[1];
               o = {
                 'columns': $.f.getData(a, 'columns') || $.v.config.grid.columns,
                 'height': $.f.getData(a, 'height') - 0 || $.v.config.grid.height,
@@ -1487,46 +1479,73 @@
                 'noscroll': $.f.getData(a, 'noscroll') || null,
                 'lang': $.f.getData(a, 'lang') || $.v.config.lang
               };
-
               $.f.checkLang(o);
-
               $.f.getLegacy.grid(a, o);
-
               bs = '';
               if ($.w.location.protocol === 'https:') {
                 bs='&base_scheme=https';
               }
-
-              $.f.call($.a.endpoint.user.replace(/%s/, k[0]) + '?sub=' + $.v.domain + bs, function (r) {
+              $.f.call($.a.endpoint.board.replace(/%s/, u) + '?sub=' + $.v.domain + bs, function (r) {
+                $.f.replace(a, $.f.structure.embedGrid(r, o));
+              });
+            }
+          },
+          embedUser: function (a, href) {
+            var p, o, bs;
+            p = $.f.getPath(href);
+            if (p.length) {
+              o = {
+                'columns': $.f.getData(a, 'columns') || $.v.config.grid.columns,
+                'height': $.f.getData(a, 'height') - 0 || $.v.config.grid.height,
+                'width': $.f.getData(a, 'width') || null,
+                'noscroll': $.f.getData(a, 'noscroll') || null,
+                'lang': $.f.getData(a, 'lang') || $.v.config.lang
+              };
+              $.f.checkLang(o);
+              $.f.getLegacy.grid(a, o);
+              bs = '';
+              if ($.w.location.protocol === 'https:') {
+                bs='&base_scheme=https';
+              }
+              $.f.call($.a.endpoint.user.replace(/%s/, p[0]) + '?sub=' + $.v.domain + bs, function (r) {
                 $.f.replace(a, $.f.structure.embedGrid(r, o));
               });
             }
           },
           embedPin: function (a) {
-            var p, k, u, o, bs;
-            p = a.href.split('#')[0].split('?')[0].split('pinterest.com/');
-            if (p[1]) {
-              k = p[1].split('/');
-              if (k[1]) {
-                o = {
-                  'width': $.f.getData(a, 'width') || null,
-                  'terse': $.f.getData(a, 'terse') || null,
-                  'lang': $.f.getData(a, 'lang') || $.v.config.lang
-                };
-
-                $.f.checkLang(o);
-
-                bs = '';
-                if ($.w.location.protocol === 'https:') {
-                  bs='&base_scheme=https';
-                }
-
-                $.f.call($.a.endpoint.pin.replace(/%s/, k[1]) + '&sub=' + $.v.domain + bs, function (r) {
-                  $.f.replace(a, $.f.structure.embedPin(r, o));
-                });
+            var p, o, bs;
+            p = $.f.getPath(a.href);
+            if (p.length) {
+              o = {
+                'width': $.f.getData(a, 'width') || null,
+                'terse': $.f.getData(a, 'terse') || null,
+                'lang': $.f.getData(a, 'lang') || $.v.config.lang
+              };
+              bs = '';
+              if ($.w.location.protocol === 'https:') {
+                bs='&base_scheme=https';
               }
+              $.f.call($.a.endpoint.pin.replace(/%s/, p[1]) + '&sub=' + $.v.domain + bs, function (r) {
+                $.f.replace(a, $.f.structure.embedPin(r, o));
+              });
             }
           }
+        },
+        // return the path part of a Pinterest URL
+        getPath: function (url) {
+          // remove hash and query, then split into path components
+          var path = url.split('#')[0].split('?')[0].split('/');
+          if (path.length > 2) {
+            // remove http
+            path.shift();
+            // remove empty space between forward-slashes
+            path.shift();
+            // remove server.pinterest.tld
+            path.shift();
+          } else {
+            path = [];
+          }
+          return path;
         },
 
         // find elements that need to be turned into buttons or widgets
@@ -1549,12 +1568,16 @@
           for (i = 0, n = a.length; i < n; i = i + 1) {
             href = a[i].href;
             // does it match to pinterest domain
-            if (href.match($.a.myDomain)) {
+            if (href && href.match($.a.myDomain)) {
               // do we have a data-pin-do directive?
               doThis = $.f.getData(a[i], 'do');
               // does data-pin-do correspond to a function we're ready to run?
               if (typeof $.f.seek[doThis] === 'function') {
-                $.f.seek[doThis](a[i]);
+                // be nice to double-encoded board and profile URLs
+                try {
+                  href = decodeURIComponent(decodeURIComponent(href));
+                } catch (err) {}
+                $.f.seek[doThis](a[i], href);
                 continue;
               }
               // do we need to build a legacy button?
@@ -1651,6 +1674,15 @@
             }
             if ($.v.countPinLarge) {
               str = str + '&pin_count_large=' + $.v.countPinLarge;
+            }
+            if ($.v.log.customGlobal) {
+              str = str + '&custom_global=1';
+            }
+            if ($.v.log.customLocal) {
+              str = str + '&custom_local=1';
+            }
+            if ($.v.log.save) {
+              str = str + '&save_flag=1';
             }
             str = str + '&profile_count=' + $.v.countProfile + '&board_count=' + $.v.countBoard;
             str = str + '&lang=' + $.v.config.lang;
@@ -1785,7 +1817,12 @@
             'countPinMedium': 0,
             'countPinLarge': 0,
             'countBoard': 0,
-            'countProfile': 0
+            'countProfile': 0,
+            'log': {
+              'customGlobal': 0,
+              'customLocal': 0,
+              'save': 0
+            }
           };
 
           $.f.langLocLookup();
@@ -1851,11 +1888,11 @@
 }(window, document, navigator, {
   'k': 'PIN_' + new Date().getTime(),
   // test version
-  'tv': '2017042001',
+  'tv': '2017100302',
   // we'll look for scripts whose source matches this, and extract config parameters
   'me': /pinit\.js$/,
   // pinterest domain regex
-  'myDomain': /^https?:\/\/(([a-z]{1,3})\.)?pinterest\.com\//,
+  'myDomain': /^https?:\/\/(([a-z]{1,3})\.)?pinterest\.([a-z]{0,2}\.)?([a-z]{1,3})/,
   'noneParam': {
     'ignore': true,
     'none': true,
@@ -1867,7 +1904,7 @@
   },
   // valid config parameters that may be passed as data-pin-* with your call to pinit.js
   'configParam': [
-    // set to "true" to show static Save buttons
+    // set to "false" to show static Save buttons (breaking change, 20171003)
     'save',
     // set to "true" to show hoverbuttons, "false" to force off
     'hover',
@@ -1900,9 +1937,7 @@
     // legacy parameter for Pin It button height (please use data-pin-tall="true" instead)
     'height',
     // legacy parameter for Pin It button shape (please use data-pin-round="true" instead)
-    'shape',
-    // use Save buttons
-    'save'
+    'shape'
   ],
   // smallest image for which we will show a hoverbutton
   'hoverButtonMinImgSize': 119,
@@ -2451,15 +2486,6 @@
         'd': 'M17.5,5 C18.881,5 20,3.881 20,2.5 C20,1.119 18.881,0 17.5,0 C16.119,0 15,1.119 15,2.5 C15,3.881 16.119,5 17.5,5 Z M10,5 C11.38,5 12.5,3.881 12.5,2.5 C12.5,1.119 11.38,0 10,0 C8.62,0 7.5,1.119 7.5,2.5 C7.5,3.881 8.62,5 10,5 M2.5,5 C3.881,5 5,3.881 5,2.5 C5,1.119 3.881,0 2.5,0 C1.12,0 0,1.119 0,2.5 C0,3.881 1.12 5,2.5,5 Z'
       } ]
     },
-    // heart-shaped like count icon for embedded pin widgets
-    'likes': {
-      'h': '13',
-      'w': '15',
-      'p': [ {
-        'f': 'b5b5b5',
-        'd': 'M7.369,12.437 L1.441,6.41 C0.217,5.165 0,3.156 1.068,1.77 C2.348,0.108 4.72,0 6.142,1.446 L7.369,2.694 L8.506,1.539 C9.73,0.293 11.706,0.073 13.07,1.159 C14.705,2.461 14.811,4.872 13.388,6.318 L7.369,12.437 Z'
-      } ]
-    },
     // dual-pin repin count icon for embedded pin widgets
     'repins': {
       'h': '14',
@@ -2522,7 +2548,7 @@
           'left': '10px',
           'height': '36px',
           'width': '36px',
-          'border-radius': '3px',
+          'border-radius': '18px',
           'background': 'transparent url () 0 0 no-repeat',
           'background-size': 'cover'
         },
@@ -2630,7 +2656,7 @@
             'position': 'absolute',
             'bottom': '10px',
             'left': '56px',
-            'color': '#8e8e8e',
+            'color': '#363636',
             'font-size': '12px'
           }
         }
@@ -2902,19 +2928,14 @@
           'height': '24px',
           'line-height': '24px',
           'margin': '0 0 0 10px',
-          '._repins, ._likes': {
+          '._repins': {
             'padding-left': '17px',
             'padding-right': '10px',
             'color': '#a8a8a8',
             'font-size': '11px',
             'font-weight': 'bold',
-            'display': 'inline-block'
-          },
-          '._repins': {
+            'display': 'inline-block',
             'background': 'transparent url(%repins%) 0 50% no-repeat'
-          },
-          '._likes': {
-            'background': 'transparent url(%likes%) 0 51% no-repeat'
           }
         }
       },
@@ -3141,16 +3162,18 @@
       '&._save': {
         '&:hover': {
           'background-color': '#aa0719',
-          'box-shadow': 'none'
+          'box-shadow': 'none',
+          'color': '#fff!important'
         },
         'border-radius': '2px',
         'text-indent': '20px',
         'width': 'auto',
         'padding': '0 4px 0 0',
         'text-align': 'center',
+        'text-decoration': 'none',
         'font': '11px/20px "Helvetica Neue", Helvetica, sans-serif',
         'font-weight': 'bold',
-        'color': '#fff',
+        'color': '#fff!important',
         'background': '#bd081c url(%logo%) 3px 50% no-repeat',
         'background-size': '14px 14px',
         'font-weight': 'bold',
