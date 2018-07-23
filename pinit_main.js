@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// fix round buttons
+// update pinterest wordmark and add pinterest logo; contain, don't cover
 
 (function (w, d, n, a) {
   var $ = w[a.k] = {
@@ -181,7 +181,6 @@
         // call an API endpoint; fire callback if specified
         call: function (url, callback) {
           var n, id, tag, msg, sep = '?';
-
           // $.f.callback starts as an empty array
           n = $.f.callback.length;
 
@@ -192,6 +191,8 @@
           $.f.callback[n] = function (r) {
             // do we have output?
             if (r) {
+              // send the original call back with the callback so we can munge href URLs if needed
+              r.theCall = url;
               // do we need to log an error?
               if (r.status && r.status === 'failure') {
                 // some errors don't have messages; fall back to status
@@ -213,12 +214,11 @@
                     $.f.log('&type=api_error&code=' + r.code + '&msg=' + msg + '&url=' + encodeURIComponent(tag.src.split('?')[0]));
                   }
                 }
-              } else {
-                // if a callback exists, pass the API output
-                if (typeof callback === 'function') {
-                  callback(r, n);
-                }
               }
+            }
+            // if a callback exists, pass the API output
+            if (typeof callback === 'function') {
+              callback(r, n);
             }
             // clean up the SCRIPT tag after it's run
             $.f.kill(id);
@@ -321,9 +321,10 @@
             '%above%': $.f.makeSVG($.a.svg.above),
             '%beside%': $.f.makeSVG($.a.svg.beside),
             '%repins%': $.f.makeSVG($.a.svg.repins),
+            '%done%': $.f.makeSVG($.a.svg.done),
             '%menu%': $.f.makeSVG($.a.svg.menu),
             '%logo%': $.f.makeSVG($.a.svg.logo),
-            '%pinterest%': $.f.makeSVG($.a.svg.pinterest),
+            '%lockup%': $.f.makeSVG($.a.svg.lockup),
             '%pinit_en_red%': $.f.makeSVG($.a.svg.pinit_en),
             '%pinit_en_white%': $.f.makeSVG($.a.svg.pinit_en, 'fff'),
             '%pinit_ja_red%': $.f.makeSVG($.a.svg.pinit_ja),
@@ -859,30 +860,31 @@
 
         // END HOVERBUTTON-RELATED STUFF
 
+        // turn a raw number into a shortened pin count
+        formatCount: function (n) {
+          if (!n) {
+            n = '0';
+          } else {
+            if (n > 999) {
+              if (n < 1000000) {
+                n = parseInt(n / 1000, 10) + 'K+';
+              } else {
+                if (n < 1000000000) {
+                  n = parseInt(n / 1000000, 10) + 'M+';
+                } else {
+                  n = '++';
+                }
+              }
+            }
+          }
+          n = n + '';
+          return n;
+        },
+
         // each kind of widget has its own structure
         structure: {
           buttonPin: function (r, options) {
             var template, formatCount, formattedCount, sep;
-            // turn a raw number into a shortened pin count
-            formatCount = function (n) {
-              if (!n) {
-                n = '0';
-              } else {
-                if (n > 999) {
-                  if (n < 1000000) {
-                    n = parseInt(n / 1000, 10) + 'K+';
-                  } else {
-                    if (n < 1000000000) {
-                      n = parseInt(n / 1000000, 10) + 'M+';
-                    } else {
-                      n = '++';
-                    }
-                  }
-                }
-              }
-              n = n + '';
-              return n;
-            };
             template = {
               'className': 'button_pin',
               'log': options.log
@@ -904,7 +906,7 @@
               if (options.count) {
                 // show count if positive, or configured to show above, or configured to show beside with data-pin-zero set
                 if (r.count || options.count === 'above' || (options.count === 'beside' && options.zero)) {
-                  formattedCount = formatCount(r.count);
+                  formattedCount = $.f.formatCount(r.count);
                   template.className = template.className + ' ' + options.count;
                   // data-pin-x will log as an extra parameter when the button is clicked
                   template.x = formattedCount;
@@ -1040,7 +1042,6 @@
                 });
                 colHeight[minIndex] = colHeight[minIndex] + pin.images['237x'].height;
               }
-
               // follow button
               if (p.board) {
                 // it's a board
@@ -1050,10 +1051,20 @@
                   'text': p.board.name,
                   'href': boardUrl
                 }
-                buttonUrl = boardUrl + 'follow/?guid=' + $.v.guid;
-                buttonLog = 'embed_board_ft';
-                template.ft.href = buttonUrl;
-                $.v.countBoard = $.v.countBoard + 1;
+                if (r.data.section) {
+                  template.hd.board = {
+                    text: r.data.section.title,
+                    href: boardUrl + r.theCall.split('/pins/')[0].split('/').pop() + '/'
+                  }
+                  buttonUrl = template.hd.board.href + 'follow/?guid=' + $.v.guid;
+                  buttonLog = 'embed_section_ft';
+                  $.v.countSection = $.v.countSection + 1;
+                } else {
+                  buttonUrl = boardUrl + 'follow/?guid=' + $.v.guid;
+                  buttonLog = 'embed_board_ft';
+                  template.ft.href = buttonUrl;
+                  $.v.countBoard = $.v.countBoard + 1;
+                }
               } else {
                 // it's a profile
                 buttonUrl = profileUrl + 'pins/follow?guid=' + $.v.guid;
@@ -1082,7 +1093,7 @@
             }
           },
           embedPin: function (r, options) {
-            var p, template, langMod, widthMain, widthMod, thumb;
+            var p, template, langMod, widthMain, widthMod, thumb, saves, done;
             if (r.data && r.data[0]) {
               p = r.data[0];
               if (p.error) {
@@ -1229,16 +1240,45 @@
                   'mp4': p.videos.video_list.V_720P.url
                 };
               }
-              // repins
+
+              // stats
+
+              // start with repin count
               if (p.repin_count) {
+                saves = p.repin_count;
+              }
+
+              // if we have an aggregated save count, use that
+              if (p.aggregated_pin_data && p.aggregated_pin_data.aggregated_stats) {
+                if (p.aggregated_pin_data.aggregated_stats.saves) {
+                  saves = p.aggregated_pin_data.aggregated_stats.saves;
+                }
+                if (p.aggregated_pin_data.aggregated_stats.done) {
+                  done = p.aggregated_pin_data.aggregated_stats.done;
+                }
+              }
+
+              // got something
+              if (saves || done) {
                 template.bd.stats = {};
-                if (p.repin_count) {
+                if (saves) {
                   template.bd.stats.repins = {
-                    'text': '' + p.repin_count,
+                    'text': $.f.formatCount(saves),
+                    // log x=count_save on click
+                    'x': 'count_save',
                     'href': $.v.config.pinterest + '/pin/' + p.id + '/repins/'
                   }
                 }
+                if (done) {
+                  template.bd.stats.done = {
+                    'text': $.f.formatCount(done),
+                    // log x=count_done on click
+                    'x': 'count_done',
+                    'href': $.v.config.pinterest + '/pin/' + p.id + '/activity/tried/'
+                  }
+                }
               }
+
               $.v.countPin = $.v.countPin + 1;
               return $.f.buildOne(template);
             }
@@ -1467,26 +1507,73 @@
               }
             }
           },
-          embedBoard: function (a, href) {
-            var p, u, o, bs;
+          embedBoard: function (a, href, sectionLevelError) {
+            var boardOrSection, p, u, o, bs;
             p = $.f.getPath(href);
+            // let's remove the empty string
+
+            if (p[p.length - 1] === '') {
+              p.pop();
+            }
+            // if we received an error from the Section level, so let's the Board
+            if (sectionLevelError) {
+              p.pop();
+            }
             if (p.length > 1) {
-              u = p[0] + '/' + p[1];
               o = {
-                'columns': $.f.getData(a, 'columns') || $.v.config.grid.columns,
-                'height': $.f.getData(a, 'height') - 0 || $.v.config.grid.height,
-                'width': $.f.getData(a, 'width') || null,
-                'noscroll': $.f.getData(a, 'noscroll') || null,
-                'lang': $.f.getData(a, 'lang') || $.v.config.lang
+                columns: $.f.getData(a, 'columns') || $.v.config.grid.columns,
+                height: $.f.getData(a, 'height') - 0 || $.v.config.grid.height,
+                width: $.f.getData(a, 'width') || null,
+                noscroll: $.f.getData(a, 'noscroll') || null,
+                lang: $.f.getData(a, 'lang') || $.v.config.lang
               };
+
+              // is it a Board?
+              if (p.length === 2) {
+                u = p[0] + '/' + p[1];
+                boardOrSection = 'board';
+              }
+
+              // is it a Section?
+              if (p.length === 3) {
+                u = p[0] + '/' + p[1] + '/' + p[2];
+                boardOrSection = 'section';
+              }
+              // there were no Pins in the Section or we received an error from the section so let's make a call to the Boards
+              if (sectionLevelError) {
+                boardOrSection = 'board';
+              }
               $.f.checkLang(o);
               $.f.getLegacy.grid(a, o);
               bs = '';
               if ($.w.location.protocol === 'https:') {
                 bs='&base_scheme=https';
               }
-              $.f.call($.a.endpoint.board.replace(/%s/, u) + '?sub=' + $.v.domain + bs, function (r) {
-                $.f.replace(a, $.f.structure.embedGrid(r, o));
+              $.f.call($.a.endpoint[boardOrSection].replace(/%s/, u) + '?sub=' + $.v.domain + bs, function (r) {
+                if (r.status === 'success') {
+                  if (boardOrSection === 'board') {
+                    $.f.replace(a, $.f.structure.embedGrid(r, o));
+                  }
+                  if (boardOrSection === 'section') {
+                    if (r.data.pins.length) {
+                      // we found Pins in the Section
+                      $.f.replace(a, $.f.structure.embedGrid(r, o));
+                    } else {
+                      // we have a Section, but the Section has no Pins, so let's show the Board level
+                      $.f.seek.embedBoard(a, href, true);
+                    }
+                  }
+                }
+
+                if (r.status === 'failure') {
+                  if (boardOrSection === 'board') {
+                    // Board does not exist - do nothing
+                  }
+                  if (boardOrSection === 'section') {
+                    // API returned an error when checking for the Section level i.e. Section does not exist, so let's show the Board level if it exists
+                    $.f.seek.embedBoard(a, href, true);
+                  }
+                }
               });
             }
           },
@@ -1684,7 +1771,7 @@
             if ($.v.log.save) {
               str = str + '&save_flag=1';
             }
-            str = str + '&profile_count=' + $.v.countProfile + '&board_count=' + $.v.countBoard;
+            str = str + '&profile_count=' + $.v.countProfile + '&board_count=' + $.v.countBoard + '&section_count=' + $.v.countSection;
             str = str + '&lang=' + $.v.config.lang;
             // were we called by pinit.js?
             if (typeof $.w['PIN_' + ~~(new Date().getTime() / 86400000)] !== 'number') {
@@ -1817,6 +1904,7 @@
             'countPinMedium': 0,
             'countPinLarge': 0,
             'countBoard': 0,
+            'countSection': 0,
             'countProfile': 0,
             'log': {
               'customGlobal': 0,
@@ -1888,7 +1976,7 @@
 }(window, document, navigator, {
   'k': 'PIN_' + new Date().getTime(),
   // test version
-  'tv': '2017100302',
+  'tv': '2018050702',
   // we'll look for scripts whose source matches this, and extract config parameters
   'me': /pinit\.js$/,
   // pinterest domain regex
@@ -1953,6 +2041,7 @@
     'count': 'https://widgets.pinterest.com/v1/urls/count.json?url=%s',
     'pin': 'https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=%s',
     'board': 'https://widgets.pinterest.com/v3/pidgets/boards/%s/pins/',
+    'section': 'https://widgets.pinterest.com/v3/pidgets/sections/%s/pins/',
     'user': 'https://widgets.pinterest.com/v3/pidgets/users/%s/pins/',
     'log': 'https://log.pinterest.com/'
   },
@@ -1996,6 +2085,7 @@
     'button_follow': 'follow',
     'embed_board_ft': 'follow',
     'embed_user_ft': 'follow',
+    'embed_section_ft': 'follow',
     'repin': 'repin',
     'button_pinit_repin': 'repin',
     'button_pinit_floating_repin': 'repinHoverButton',
@@ -2469,12 +2559,16 @@
       } ]
     },
     // full Pinterest logotype for grid footer buttons
-    'pinterest': {
-      'w': '64',
-      'h': '16',
+    'lockup': {
+      'w': '50',
+      'h': '12',
+      'x1': '0',
+      'y1': '0',
+      'x2': '50',
+      'y2': '12',
       'p': [ {
         'f': 'bd081c',
-        'd': 'M33.215,7.667 C33.888,7.667 34.122,8.075 34.122,8.562 C34.122,9.386 33.482,9.889 32.481,9.889 C32.124,9.889 31.625,9.804 31.329,9.704 C31.452,8.948 31.94,7.667 33.215,7.667 L33.215,7.667 Z M47.669,7.667 C48.284,7.667 48.571,8.075 48.571,8.562 C48.571,9.386 47.936,9.889 46.931,9.889 C46.572,9.889 46.07,9.804 45.772,9.704 C45.895,8.948 46.439,7.667 47.659,7.667 L47.669,7.667 Z M62.906,7.736 C63.111,7.736 63.245,7.65 63.286,7.454 C63.347,7.166 63.47,6.664 63.511,6.531 C63.552,6.356 63.45,6.223 63.255,6.223 L61.737,6.223 C61.84,5.782 62.271,4.367 62.271,3.444 C62.271,1.599 60.702,0.03 58.487,0.03 C55.975,0.03 54.344,1.711 54.344,4.08 C54.344,4.767 54.601,5.577 54.919,6.069 C54.785,6.059 54.642,6.054 54.508,6.054 C52.601,6.054 51.402,7.09 51.402,8.593 C51.402,10.008 52.509,10.559 53.565,10.92 C54.488,11.249 55.349,11.4 55.349,12.12 C55.349,12.612 54.878,12.899 53.955,12.899 C52.858,12.899 52.253,12.387 52.099,12.192 C52.201,12.11 52.355,11.915 52.355,11.595 C52.355,11.144 52.039,10.775 51.449,10.775 C50.948,10.775 50.526,11.185 50.419,11.718 C49.619,12.374 48.743,12.802 47.503,12.802 C46.283,12.802 45.647,12.166 45.647,10.813 C45.934,10.902 46.683,11.008 47.175,11.008 C49.246,11.008 50.651,10.064 50.651,8.184 C50.651,7.172 49.769,6.108 48.005,6.108 C45.692,6.108 44.399,7.575 43.832,9.184 L43.355,9.076 C43.489,8.717 43.577,8.301 43.577,7.845 C43.577,7.045 43.085,6.107 41.762,6.107 C40.845,6.107 39.974,6.708 39.37,7.61 L39.626,6.606 C39.664,6.452 39.599,6.283 39.359,6.283 L38.006,6.283 C37.814,6.283 37.678,6.354 37.62,6.57 L36.667,10.312 C36.39,11.43 34.913,12.814 33.057,12.814 C31.835,12.814 31.201,12.138 31.201,10.784 C31.522,10.912 32.235,11.02 32.726,11.02 C34.879,11.02 36.205,10.081 36.205,8.197 C36.205,7.187 35.313,6.124 33.56,6.124 C30.945,6.124 29.345,8.148 29.079,10.441 C28.966,11.394 28.156,12.703 27.284,12.703 C26.864,12.703 26.628,12.436 26.628,11.985 C26.628,11.595 26.901,10.631 27.202,9.432 C27.305,9.032 27.456,8.416 27.626,7.74 L29.051,7.74 C29.259,7.74 29.382,7.647 29.431,7.453 C29.498,7.165 29.622,6.673 29.656,6.54 C29.704,6.366 29.601,6.227 29.404,6.227 L28.009,6.227 L28.666,3.606 C28.727,3.346 28.508,3.196 28.281,3.244 C28.281,3.244 27.204,3.455 27.006,3.498 C26.804,3.539 26.647,3.646 26.575,3.939 L26.011,6.225 L24.904,6.225 C24.691,6.225 24.568,6.312 24.522,6.509 C24.453,6.792 24.327,7.288 24.293,7.422 C24.245,7.6 24.35,7.735 24.55,7.735 L25.645,7.735 C25.638,7.769 25.25,9.242 24.937,10.565 C24.789,11.204 24.293,12.691 23.481,12.691 C22.999,12.691 22.794,12.445 22.794,11.922 C22.794,11.096 23.606,9.031 23.606,8.093 C23.606,6.842 22.935,6.114 21.559,6.114 C20.693,6.114 19.795,6.678 19.414,7.171 C19.414,7.171 19.529,6.771 19.57,6.617 C19.612,6.453 19.529,6.292 19.314,6.292 L17.971,6.292 C17.684,6.292 17.609,6.446 17.567,6.612 L16.598,10.406 C16.275,11.657 15.503,12.703 14.68,12.703 C14.25,12.703 14.065,12.436 14.065,11.974 C14.065,11.585 14.313,10.621 14.619,9.421 C14.983,7.965 15.306,6.766 15.342,6.622 C15.388,6.444 15.307,6.288 15.075,6.288 L13.722,6.288 C13.476,6.288 13.388,6.414 13.338,6.595 C13.338,6.595 12.959,8.034 12.557,9.641 C12.27,10.806 11.942,11.993 11.942,12.549 C11.942,13.543 12.386,14.292 13.616,14.292 C14.559,14.292 15.308,13.81 15.882,13.202 L15.739,13.766 C15.687,13.957 15.749,14.125 15.967,14.125 L17.352,14.125 C17.593,14.125 17.685,14.027 17.736,13.817 L18.833,9.551 C19.103,8.451 19.777,7.726 20.73,7.726 C21.181,7.726 21.571,8.024 21.526,8.605 C21.475,9.244 20.706,11.538 20.706,12.545 C20.706,13.303 20.989,14.288 22.422,14.288 C23.396,14.288 24.114,13.816 24.637,13.211 C24.832,13.849 25.334,14.28 26.267,14.28 C27.816,14.28 28.749,13.36 29.302,12.438 C29.751,13.515 30.815,14.284 32.379,14.284 C33.968,14.284 35.204,13.61 36.076,12.697 L35.806,13.781 C35.755,13.973 35.841,14.125 36.067,14.125 L37.437,14.125 C37.621,14.125 37.757,14.028 37.806,13.83 C37.828,13.734 38.027,12.969 38.308,11.882 C38.842,9.801 39.703,7.642 40.993,7.642 C41.449,7.642 41.637,7.897 41.637,8.298 C41.637,8.487 41.581,8.649 41.534,8.739 C40.909,8.614 40.404,8.922 40.404,9.59 C40.404,10.027 40.863,10.423 41.481,10.423 C41.953,10.423 42.345,10.308 42.657,10.097 C42.954,10.159 43.262,10.225 43.58,10.297 C43.539,10.61 43.508,10.918 43.508,11.207 C43.508,12.879 44.769,14.297 46.902,14.297 C48.584,14.297 49.65,13.733 50.665,12.898 C51.147,13.678 52.347,14.303 53.926,14.303 C56.09,14.303 57.32,13.175 57.32,11.688 C57.32,10.335 56.213,9.843 55.074,9.433 C54.152,9.094 53.372,8.92 53.372,8.264 C53.372,7.72 53.803,7.474 54.521,7.474 C54.992,7.474 55.341,7.577 55.536,7.628 C55.72,8.089 56.11,8.612 56.777,8.612 C57.335,8.612 57.587,8.171 57.587,7.761 C57.587,6.602 55.657,6.479 55.657,3.998 C55.657,2.45 56.533,1.178 58.343,1.178 C59.603,1.178 60.425,1.978 60.425,3.26 C60.425,4.316 59.779,6.213 59.779,6.213 L58.682,6.213 C58.472,6.213 58.347,6.295 58.299,6.49 L58.071,7.402 C58.027,7.577 58.128,7.71 58.327,7.71 L59.393,7.71 C59.617,7.749 58.286,12.45 58.286,12.529 C58.286,13.524 58.848,14.272 60.075,14.272 C61.808,14.272 62.895,13.144 63.367,11.504 C63.404,11.373 63.333,11.27 63.203,11.27 L62.536,11.27 C62.403,11.27 62.327,11.344 62.294,11.475 C62.148,12.06 61.778,12.675 61.043,12.675 C60.623,12.675 60.385,12.408 60.385,11.951 C60.385,11.561 61.39,7.709 61.39,7.709 L62.906,7.736 L62.906,7.736 Z M16.099,4.13 C16.052,4.845 15.453,5.426 14.763,5.426 C14.076,5.426 13.554,4.845 13.605,4.129 C13.656,3.414 14.251,2.833 14.94,2.833 C15.629,2.833 16.15,3.409 16.099,4.125 L16.099,4.13 Z M6.45,0 C2.246,0 0.01,2.825 0.01,5.902 C0,7.342 0.764,9.122 1.979,9.69 C2.164,9.775 2.262,9.737 2.304,9.559 C2.335,9.423 2.501,8.762 2.575,8.453 C2.606,8.355 2.595,8.269 2.513,8.172 C2.113,7.686 1.795,6.788 1.795,5.949 C1.795,3.8 3.426,1.72 6.194,1.72 C8.594,1.72 10.265,3.35 10.265,5.685 C10.265,8.322 8.942,10.148 7.209,10.148 C6.256,10.148 5.538,9.359 5.764,8.387 C6.041,7.228 6.574,5.977 6.574,5.136 C6.574,4.388 6.174,3.762 5.343,3.762 C4.369,3.762 3.58,4.767 3.58,6.131 C3.58,6.992 3.877,7.577 3.877,7.577 L2.707,12.428 C2.407,13.72 2.748,15.811 2.777,15.993 C2.792,16.09 2.9,16.124 2.961,16.041 C3.058,15.915 4.223,14.169 4.551,12.906 L5.156,10.588 C5.477,11.193 6.404,11.706 7.391,11.706 C10.331,11.706 12.45,9.003 12.45,5.644 C12.45,2.424 9.822,0.014 6.441,0.014 L6.45,0 Z'
+        'd': 'M19.69,9.28 L19.69,4.28 L21.27,4.28 L21.27,9.28 L19.69,9.28 Z M5.97,0.00 C9.27,0.00 11.95,2.69 11.95,6.00 C11.95,9.31 9.27,12.00 5.97,12.00 C5.38,12.00 4.80,11.91 4.26,11.75 C4.26,11.75 4.26,11.75 4.26,11.75 C4.25,11.75 4.24,11.74 4.23,11.74 L4.21,11.73 C4.21,11.73 4.21,11.73 4.21,11.73 C4.45,11.33 4.81,10.68 4.95,10.16 C5.02,9.88 5.32,8.73 5.32,8.73 C5.52,9.11 6.08,9.42 6.69,9.42 C8.49,9.42 9.79,7.76 9.79,5.69 C9.79,3.71 8.18,2.23 6.11,2.23 C3.53,2.23 2.16,3.96 2.16,5.86 C2.16,6.74 2.63,7.83 3.37,8.18 C3.49,8.23 3.55,8.21 3.57,8.10 C3.59,8.02 3.69,7.61 3.74,7.42 C3.75,7.36 3.75,7.31 3.70,7.25 C3.45,6.95 3.25,6.39 3.25,5.88 C3.25,4.55 4.25,3.27 5.95,3.27 C7.42,3.27 8.45,4.28 8.45,5.71 C8.45,7.34 7.63,8.46 6.57,8.46 C5.98,8.46 5.54,7.98 5.68,7.38 C5.85,6.67 6.18,5.90 6.18,5.38 C6.18,4.92 5.93,4.54 5.42,4.54 C4.82,4.54 4.34,5.16 4.34,5.99 C4.34,6.52 4.52,6.88 4.52,6.88 C4.52,6.88 3.93,9.40 3.82,9.87 C3.70,10.38 3.75,11.11 3.80,11.59 L3.80,11.59 C3.79,11.59 3.78,11.58 3.78,11.58 C3.77,11.58 3.76,11.58 3.76,11.57 C3.76,11.57 3.76,11.57 3.76,11.57 C1.56,10.69 0.00,8.53 0.00,6.00 C0.00,2.69 2.67,0.00 5.97,0.00 Z M16.87,2.31 C17.71,2.31 18.34,2.54 18.76,2.95 C19.21,3.37 19.46,3.96 19.46,4.66 C19.46,6.00 18.54,6.95 17.11,6.95 L15.72,6.95 L15.72,9.28 L14.12,9.28 L14.12,2.31 L16.87,2.31 Z M16.94,5.58 C17.56,5.58 17.91,5.21 17.91,4.65 C17.91,4.10 17.55,3.76 16.94,3.76 L15.72,3.76 L15.72,5.58 L16.94,5.58 Z M50.00,5.28 L49.19,5.28 L49.19,7.62 C49.19,8.01 49.40,8.11 49.74,8.11 C49.83,8.11 49.93,8.10 50.00,8.10 L50.00,9.28 C49.84,9.31 49.58,9.33 49.22,9.33 C48.30,9.33 47.64,9.03 47.64,7.96 L47.64,5.28 L47.16,5.28 L47.16,4.28 L47.64,4.28 L47.64,2.70 L49.19,2.70 L49.19,4.28 L50.00,4.28 L50.00,5.28 Z M45.31,6.13 C46.18,6.27 47.21,6.50 47.21,7.77 C47.21,8.87 46.25,9.43 44.95,9.43 C43.55,9.43 42.65,8.81 42.54,7.78 L44.05,7.78 C44.15,8.20 44.46,8.40 44.94,8.40 C45.42,8.40 45.72,8.22 45.72,7.90 C45.72,7.45 45.12,7.40 44.46,7.29 C43.59,7.14 42.67,6.91 42.67,5.74 C42.67,4.68 43.64,4.14 44.82,4.14 C46.22,4.14 46.98,4.75 47.06,5.74 L45.60,5.74 C45.54,5.29 45.24,5.15 44.80,5.15 C44.42,5.15 44.12,5.30 44.12,5.61 C44.12,5.96 44.68,6.01 45.31,6.13 Z M20.48,2.00 C21.00,2.00 21.43,2.42 21.43,2.95 C21.43,3.48 21.00,3.90 20.48,3.90 C19.95,3.90 19.53,3.48 19.53,2.95 C19.53,2.42 19.95,2.00 20.48,2.00 Z M28.48,7.62 C28.48,8.01 28.70,8.11 29.04,8.11 C29.10,8.11 29.18,8.10 29.24,8.10 L29.24,9.29 C29.08,9.31 28.83,9.33 28.52,9.33 C27.60,9.33 26.94,9.03 26.94,7.96 L26.94,5.28 L26.42,5.28 L26.42,4.28 L26.94,4.28 L26.94,2.70 L28.48,2.70 L28.48,4.28 L29.24,4.28 L29.24,5.28 L28.48,5.28 L28.48,7.62 Z M24.69,4.14 C25.77,4.14 26.41,4.92 26.41,6.03 L26.41,9.28 L24.83,9.28 L24.83,6.35 C24.83,5.82 24.57,5.46 24.05,5.46 C23.53,5.46 23.18,5.90 23.18,6.52 L23.18,9.28 L21.60,9.28 L21.60,4.28 L23.12,4.28 L23.12,4.97 L23.15,4.97 C23.52,4.43 24.00,4.14 24.69,4.14 Z M33.42,4.76 C32.99,4.37 32.43,4.14 31.72,4.14 C30.20,4.14 29.16,5.28 29.16,6.77 C29.16,8.28 30.17,9.42 31.81,9.42 C32.44,9.42 32.95,9.26 33.37,8.96 C33.80,8.66 34.10,8.23 34.20,7.78 L32.66,7.78 C32.52,8.10 32.25,8.28 31.83,8.28 C31.18,8.28 30.81,7.86 30.72,7.19 L34.29,7.19 C34.30,6.18 34.01,5.31 33.42,4.76 L33.42,4.76 Z M41.66,4.76 C42.26,5.31 42.55,6.18 42.54,7.19 L38.97,7.19 C39.06,7.86 39.43,8.28 40.08,8.28 C40.50,8.28 40.77,8.10 40.91,7.78 L42.45,7.78 C42.34,8.23 42.05,8.66 41.62,8.96 C41.20,9.26 40.69,9.42 40.06,9.42 C38.42,9.42 37.41,8.28 37.41,6.77 C37.41,5.28 38.45,4.14 39.97,4.14 C40.67,4.14 41.24,4.37 41.66,4.76 Z M30.73,6.24 C30.83,5.65 31.14,5.27 31.75,5.27 C32.26,5.27 32.63,5.65 32.69,6.24 L30.73,6.24 Z M38.98,6.24 L40.94,6.24 C40.88,5.65 40.51,5.27 40.00,5.27 C39.39,5.27 39.08,5.65 38.98,6.24 Z M37.54,4.21 L37.54,5.60 C36.64,5.51 36.07,5.99 36.07,7.03 L36.07,9.28 L34.48,9.28 L34.48,4.28 L36.00,4.28 L36.00,5.06 L36.03,5.06 C36.38,4.47 36.78,4.21 37.39,4.21 C37.45,4.21 37.50,4.21 37.54,4.21 Z'
       } ]
     },
     // three-dot menu opener for embedded pin widgets
@@ -2493,6 +2587,15 @@
       'p': [ {
         'f': 'b5b5b5',
         'd': 'M11.979,6.859 L13.99,5.011 L11.241,5.011 L10.486,0 L9.739,5.011 L7,5.011 L8.986,6.858 L8.986,11.017 C8.505,10.985 8.143,11.012 8.143,11.213 C8.143,11.687 8.503,12.001 8.986,12.001 L11.982,12 C12.465,12 12.888,11.686 12.888,11.213 C12.888,11.011 12.465,10.985 11.982,11.017 L11.979,6.859 Z M4.979,7.142 L6.99,8.99 L4.241,8.99 L3.486,14.001 L2.739,8.99 L0,8.99 L1.986,7.143 L1.986,2.984 C1.505,3.016 1.143,2.989 1.143,2.788 C1.143,2.315 1.503,2 1.986,2 L4.982,2.001 C5.465,2.001 5.888,2.315 5.888,2.789 C5.888,2.99 5.465,3.017 4.982,2.984 L4.979,7.142 Z'
+      } ]
+    },
+    // done count icon for embedded pin widgets
+    'done': {
+      'h': '12',
+      'w': '12',
+      'p': [ {
+        'f': 'b5b5b5',
+        'd': 'M0,6 L2,4 L5,7 L10,1 L12,3 L5,11 Z'
       } ]
     },
     // Pin It logotype, English
@@ -2628,11 +2731,11 @@
             },
             '._logo': {
               'display': 'inline-block',
-              'vertical-align': 'top',
-              'height': '33px',
-              'width': '65px',
-              'background': 'transparent url(%pinterest%) 50% 50% no-repeat',
-              'background-size': '60px 15px'
+              'vertical-align': 'bottom',
+              'height': '32px',
+              'width': '80px',
+              'background': 'transparent url(%lockup%) 50% 50% no-repeat',
+              'background-size': 'contain'
             }
           },
           '&:hover': {
@@ -2936,6 +3039,15 @@
             'font-weight': 'bold',
             'display': 'inline-block',
             'background': 'transparent url(%repins%) 0 50% no-repeat'
+          },
+          '._done': {
+            'padding-left': '15px',
+            'padding-right': '10px',
+            'color': '#a8a8a8',
+            'font-size': '11px',
+            'font-weight': 'bold',
+            'display': 'inline-block',
+            'background': 'transparent url(%done%) 0 50% no-repeat'
           }
         }
       },
