@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// update pinterest wordmark and add pinterest logo; contain, don't cover
+// rolling out sticky buttons for Japanese and Korean
 
 (function (w, d, n, a) {
   var $ = w[a.k] = {
@@ -15,8 +15,8 @@
         callback : [],
 
         // console.log only if debug is on
-        debug: function (obj, force) {
-          if ($.v.config.debug || force) {
+        debug: function (obj) {
+          if ($.v.config.debug) {
             if ($.w.console && $.w.console.log) {
               $.w.console.log(obj);
             } else {
@@ -679,7 +679,7 @@
               if (x) {
                 x = '&x=' + encodeURIComponent(x);
               }
-              $.f.log('&type=' + log + x + '&href=' + encodeURIComponent(href));
+              $.f.log('&type=' + log + '&lang=' + $.v.lang + '&sub=' + $.v.sub + x + '&href=' + encodeURIComponent(href));
               if (typeof $.f.util[$.a.util[log]] === 'function') {
                 // got a special utility handler? run it
                 $.f.util[$.a.util[log]]({'el': el, 'href': href, 'v': v});
@@ -744,8 +744,9 @@
           }
         },
 
-        // show hoverbutton
-        showHoverButton: function (el) {
+        // show hoverbuttons and stickybuttons
+        showHoverButton: function (el, sticky) {
+
           // always try to kill it
           $.f.kill($.s.hoverButton);
 
@@ -772,35 +773,60 @@
             c.round = true;
           }
 
+          var h, w;
+
+          if (sticky) {
+            // use actual image dimensions because they may be scaled below 120x120
+            h = el.naturalHeight;
+            w = el.naturalWidth;
+          } else {
+            // use rendered height/width so we don't wind up with hoverbuttons over scaled-down icons
+            h = el.height;
+            w = el.width;
+          }
+
           // size > 120x120?
-          if (el.height > $.a.hoverButtonMinImgSize && el.width > $.a.hoverButtonMinImgSize) {
+          if (h > $.a.hoverButtonMinImgSize && w > $.a.hoverButtonMinImgSize) {
+
+            var impressionLogExtras = '&lang=' + c.lang + '&sub=' + $.v.sub;
 
             // make it fresh each time; this pays attention to individual image config options
             var buttonClass = $.a.k + '_button_pin';
             if (c.round) {
               buttonClass = buttonClass + ' ' + $.a.k + '_round';
+              impressionLogExtras = impressionLogExtras + '&round=1';
             } else {
               buttonClass = buttonClass + ' ' + $.a.k + '_save'
             }
 
             if (c.tall) {
               buttonClass = buttonClass + ' ' + $.a.k + '_tall';
+              impressionLogExtras = impressionLogExtras + '&tall=1';
             }
-
 
             // get position, start href
             var p = $.f.getPos(el), href, log;
 
+            var log, href;
             if (c.id) {
+              impressionLogExtras = impressionLogExtras + '&id=' + c.id;
               href = $.v.config.pinterest + $.a.path.repin.replace(/%s/, c.id);
-              log = 'button_pinit_floating_repin';
+              if (sticky) {
+                log = 'button_pinit_sticky_repin';
+              } else {
+                log = 'button_pinit_floating_repin';
+              }
             } else {
               // set the button href
               href = $.v.config.pinterest + $.a.path.create + 'guid=' + $.v.guid;
               href = href + '&url=' + encodeURIComponent(c.url || $.d.URL);
               href = href + '&media=' + encodeURIComponent(c.media || el.src);
               href = href + '&description=' + encodeURIComponent($.f.getSelection() || c.description || el.title || el.alt || $.d.title);
-              log = 'button_pinit_floating';
+              if (sticky) {
+                log = 'button_pinit_sticky';
+              } else {
+                log = 'button_pinit_floating';
+              }
             }
 
             $.s.hoverButton = $.f.make({'SPAN': {
@@ -817,6 +843,16 @@
             // add ID if we're repinning
             if (c.id) {
               $.f.set($.s.hoverButton, 'data-pin-id', c.id);
+            }
+
+            // log impressions after a button has actually rendered
+            if (!$.v.hazLoggedHoverButton) {
+              if (sticky) {
+                $.f.log('&type=impression_sticky' + impressionLogExtras);
+              } else {
+                $.f.log('&type=impression_floating' + impressionLogExtras);
+              }
+              $.v.hazLoggedHoverButton = true;
             }
 
             // set height and position
@@ -1317,6 +1353,9 @@
               'height': $.f.getData(a, 'height'),
               'shape': $.f.getData(a, 'shape'),
               'config': $.f.getData(a, 'config'),
+              // check for inline overrides
+              'tall': $.f.getData(a, 'tall'),
+              'round': $.f.getData(a, 'round'),
               // here we use $.f.get because it's count-layout, not data-pin-count-layout
               'countLayout': $.f.get(a, 'count-layout')
             };
@@ -1353,6 +1392,20 @@
             // translate valid tall heights into tall = true
             if (c.height === '28' || c.height === '32') {
               o.tall = true;
+            }
+
+            // inline overrides
+            if (c.tall) {
+              o.tall = true;
+              if (c.tall === 'false') {
+                o.tall = false;
+              }
+            }
+            if (c.round) {
+              o.round = true;
+              if (c.round === 'false') {
+                o.round = false;
+              }
             }
           }
         },
@@ -1534,8 +1587,8 @@
                 boardOrSection = 'board';
               }
 
-              // is it a Section?
-              if (p.length === 3) {
+              // is it a Section? and does the Section have value?
+              if (p.length === 3 && p[2]) {
                 u = p[0] + '/' + p[1] + '/' + p[2];
                 boardOrSection = 'section';
               }
@@ -1549,7 +1602,7 @@
               if ($.w.location.protocol === 'https:') {
                 bs='&base_scheme=https';
               }
-              $.f.call($.a.endpoint[boardOrSection].replace(/%s/, u) + '?sub=' + $.v.domain + bs, function (r) {
+              $.f.call($.a.endpoint[boardOrSection].replace(/%s/, u) + '?sub=' + $.v.sub + bs, function (r) {
                 if (r.status === 'success') {
                   if (boardOrSection === 'board') {
                     $.f.replace(a, $.f.structure.embedGrid(r, o));
@@ -1594,7 +1647,7 @@
               if ($.w.location.protocol === 'https:') {
                 bs='&base_scheme=https';
               }
-              $.f.call($.a.endpoint.user.replace(/%s/, p[0]) + '?sub=' + $.v.domain + bs, function (r) {
+              $.f.call($.a.endpoint.user.replace(/%s/, p[0]) + '?sub=' + $.v.sub + bs, function (r) {
                 $.f.replace(a, $.f.structure.embedGrid(r, o));
               });
             }
@@ -1612,7 +1665,7 @@
               if ($.w.location.protocol === 'https:') {
                 bs='&base_scheme=https';
               }
-              $.f.call($.a.endpoint.pin.replace(/%s/, p[1]) + '&sub=' + $.v.domain + bs, function (r) {
+              $.f.call($.a.endpoint.pin.replace(/%s/, p[1]) + '&sub=' + $.v.sub + bs, function (r) {
                 $.f.replace(a, $.f.structure.embedPin(r, o));
               });
             }
@@ -1748,13 +1801,16 @@
           }
 
           // global Pinterest URL will be used in most places; we will have to update URLs we get from API endpoints in widgets
-          $.v.config.pinterest = 'https://' + $.v.domain + '.pinterest.com';
+          $.v.config.pinterest = 'https://' + $.v.sub + '.pinterest.com';
 
           // wait one second and then send a logging ping
           $.w.setTimeout(function () {
-            var str = '&type=pidget&sub=' + $.v.domain + '&button_count=' + $.v.countButton + '&follow_count=' + $.v.countFollow + '&pin_count=' + $.v.countPin;
+            var str = '&type=pidget&sub=' + $.v.sub + '&button_count=' + $.v.countButton + '&follow_count=' + $.v.countFollow + '&pin_count=' + $.v.countPin;
             if ($.v.canHazHoverButtons) {
               str = str + '&button_hover=1';
+            }
+            if ($.v.canHazStickyButtons) {
+              str = str + '&button_sticky=1';
             }
             if ($.v.countPinMedium) {
               str = str + '&pin_count_medium=' + $.v.countPinMedium;
@@ -1789,7 +1845,7 @@
 
           // defaults: English, WWW
           $.v.lang = 'en';
-          $.v.domain = 'www';
+          $.v.sub = 'www';
 
           // try window.navigator.language first
           t = $.n.language || $.v.lang;
@@ -1820,8 +1876,14 @@
             }
             // is there an immediate match for language in domains?
             if ($.a.save.domain[lang]) {
-              $.v.domain = lang;
+              // fix one-part navigator.language trouble (jp, kr)
+              if (typeof $.a.save.domain[lang] === 'string') {
+                $.v.sub = $.a.save.domain[lang];
+              } else {
+                $.v.sub = lang;
+              }
             }
+
             // do we have a locale?
             if (t[1]) {
               locale = t[1];
@@ -1833,24 +1895,24 @@
                   // bare domain like fi needs to allow fi-us
                   if (q === true) {
                     if (!$.a.save.domain[locale]) {
-                      $.v.domain = 'www';
+                      $.v.sub = 'www';
                     }
                   } else {
                     // some domains don't match string abbreviation
                     if (q.d === locale) {
                       // domain matches main default, as for hi-in
-                      $.v.domain = q.d;
+                      $.v.sub = q.d;
                     } else {
                       // got alt?
                       if (q.alt) {
                         if (q.alt[locale]) {
                           if (typeof q.alt[locale] === 'string') {
                             // alt dom is a string, as for gb = uk, no lookup needed
-                            $.v.domain = q.alt[locale];
+                            $.v.sub = q.alt[locale];
                           } else {
                             if (q.alt[locale].d) {
                               // domain is different, as for pt-br
-                              $.v.domain = q.alt[locale].d;
+                              $.v.sub = q.alt[locale].d;
                               hazAltDom = true;
                             }
                             if (q.alt[locale].s) {
@@ -1866,20 +1928,136 @@
                 // if we don't have an alternate domain, use the default for this domain
                 if (!hazAltDomain) {
                   if ($.a.save.domain[locale]) {
-                    $.v.domain = locale;
+                    $.v.sub = locale;
                   }
                 }
               }
             }
           }
           $.f.debug('Lang: ' + $.v.lang);
-          $.f.debug('Domain: ' + $.v.domain);
-          return { 's': $.v.lang, 'd': $.v.domain};
+          $.f.debug('Subdomain: ' + $.v.sub);
+          return { 's': $.v.lang, 'd': $.v.sub};
         },
+
+        // BEGIN STICKY BUTTONS
+
+        sticky: {
+          // given point X and Y, tell us if there's an image
+          find: function (o) {
+            var el, r, rect;
+            r = {};
+            el = $.d.elementFromPoint(o.x,  o.y);
+            if (el && el.tagName && el.tagName === 'IMG') {
+              r = {
+                rect: el.getBoundingClientRect(),
+                img: el
+              };
+            }
+            return r;
+          },
+          // hide sticky button
+          hide: function () {
+            $.f.kill($.s.hoverButton);
+          },
+          // show sticky button over an image
+          show: function (o) {
+            if (o && o.img) {
+              // second parameter "true" directs us to check naturalHeight and naturalWidth
+              $.f.showHoverButton(o.img, true);
+            }
+          },
+          // look for a pinnable thing
+          fire: function () {
+            var i, x, el, delta, key = {}, found = [], showMe, imageMidX, best = $.w.innerWidth;
+            if (!$.v.sticky.hazTouch) {
+              for (x = 0; x < $.w.innerWidth; x = x + $.w.innerWidth / 10) {
+                el = $.f.sticky.find({
+                  x: x,
+                  y: $.w.innerHeight / $.a.sticky.scanAt
+                });
+                if (el.rect && el.img && el.img.src && el.img.src.match(/^https?:\/\//) && !key[el.img.src]) {
+                  key[el.img.src] = true;
+                  found.push({
+                    img: el.img,
+                    rect: el.rect
+                  });
+                }
+              }
+              // find the image on the centerline whose middle is closest to our last touch
+              for (i = 0; i < found.length; i = i + 1) {
+                imageMidX = (found[i].rect.x + found[i].rect.width / 2);
+                delta = Math.abs($.v.sticky.touchX - imageMidX);
+                if (delta < best) {
+                  best = delta;
+                  showMe = found[i];
+                }
+              }
+              $.f.sticky.show(showMe);
+            }
+          },
+          // watch our viewport for changes
+          observe: function () {
+            // has our screen position changed since the last time we checked?
+            if ($.v.sticky.hazChange) {
+              // are we done scrolling?
+              if ($.w.pageYOffset === $.v.sticky.pageY) {
+                // we are holding still, so look for a pinnable thing
+                $.f.sticky.fire();
+                $.v.sticky.hazChange = false;
+              } else {
+                // we are still moving, so do nothing
+                $.v.sticky.pageY = $.w.pageYOffset;
+              }
+            } else {
+              // did the scroll event just start?
+              if ($.w.pageYOffset !== $.v.sticky.pageY) {
+                $.f.sticky.hide();
+                // set our pageY pointer
+                $.v.sticky.pageY = $.w.pageYOffset;
+                // start watching for scroll stop
+                $.v.sticky.hazChange = true;
+              }
+            }
+            // check again later
+            $.w.setTimeout($.f.sticky.observe, $.a.sticky.obsDelay);
+          },
+          // let's get ready to stick it!
+          init: function () {
+            // transfer config params into variable space, which will change later
+            $.v.sticky = $.a.sticky;
+            // listen for events
+            $.f.listen($.w, 'touchstart', function (e) {
+              // knowing X will help us guess the right image later
+              $.v.sticky.touchX = ~~(e.touches[0].clientX);
+              $.v.sticky.hazTouch = true;
+            });
+            $.f.listen($.w, 'touchend', function (e) {
+              $.v.sticky.hazTouch = false;
+            });
+            // this may be configurable later
+            if ($.v.sticky.runOnLoad) {
+              // pretend we've had a touch
+              $.v.sticky.hazChange = true;
+              $.v.sticky.pageY = $.w.pageYOffset;
+              $.v.sticky.touchX = $.w.innerWidth / 2;
+            }
+            // start watching
+            $.f.sticky.observe();
+            // log that stickybuttons have been requested
+            $.v.canHazStickyButtons = true;
+            // add one to button count for logging purposes
+            if (!$.v.canHazHoverButtons) {
+              // if hoverbuttons are also on page, don't double-count
+              $.v.countButton = $.v.countButton + 1;
+            }
+          }
+        },
+
+        // END STICKY BUTTONS
 
         init: function () {
 
-          var i, t, tld = '', forceHover = false, dq = false;
+          var i, t, tld = 'com', dq = false;
 
           $.d.b = $.d.getElementsByTagName('BODY')[0];
           $.d.h = $.d.getElementsByTagName('HEAD')[0];
@@ -1952,9 +2130,16 @@
             }
 
             // do we need to show hoverbuttons?
-            if ($.v.config.hover || $.a.forceHover[tld]) {
-              // don't show on sites that have explicitly opted out
+            if ($.v.config.hover || ($.a.override.hover.domain[tld] || $.a.override.hover.lang[$.v.lang])) {
+              // if we're overriding default configuration we should check for explicit opt-out
+              if ($.a.override.hover.domain[tld]) {
+                $.f.debug('hover: overridden by TLD');
+              }
+              if ($.a.override.hover.lang[$.v.lang]) {
+                $.f.debug('hover: overridden by browser language');
+              }
               if ($.v.config.hover !== 'false') {
+                $.f.debug('hover: allowed per config');
                 $.v.canHazHoverButtons = true;
                 // add one to button count for logging purposes
                 $.v.countButton = $.v.countButton + 1;
@@ -1962,6 +2147,31 @@
                 $.d.b.setAttribute('data-pin-hover', true);
                 // on mouse over, check to see if this image should show a hoverbutton
                 $.f.listen($.d.b, 'mouseover', $.f.over);
+
+                // do we need to show sticky buttons for mobile devices?
+                if ($.v.config.sticky || ($.a.override.sticky.domain[tld] || $.a.override.sticky.lang[$.v.lang])) {
+                  if ($.a.override.sticky.domain[tld]) {
+                    $.f.debug('sticky: overridden by TLD');
+                  }
+                  if ($.a.override.sticky.lang[$.v.lang]) {
+                    $.f.debug('sticky: overridden by browser language');
+                  }
+                  // if we're overriding default configuration we should check for explicit opt-out
+                  if ($.v.config.sticky !== 'false') {
+                    $.f.debug('sticky: allowed per config');
+                    // only run sticky buttons if we're on a mobile device
+                    if (typeof $.w.ontouchstart === 'object') {
+                      $.f.debug('sticky: initing');
+                      $.f.sticky.init();
+                    } else {
+                      $.f.debug('sticky: ontouchstart not found');
+                    }
+                  } else {
+                    $.f.debug('sticky: forbidden by config');
+                  }
+                }
+              } else {
+                $.f.debug('hover: forbidden by config');
               }
             }
 
@@ -1976,7 +2186,7 @@
 }(window, document, navigator, {
   'k': 'PIN_' + new Date().getTime(),
   // test version
-  'tv': '2018050702',
+  'tv': '2018101401',
   // we'll look for scripts whose source matches this, and extract config parameters
   'me': /pinit\.js$/,
   // pinterest domain regex
@@ -1986,12 +2196,27 @@
     'none': true,
     'nothing': true
   },
-  // entries here will have hoverbuttons on by default, off if they explicitly set data-pin-hover="false" on pinit.js
-  'forceHover': {
-    // 'ar': true
+  'override': {
+    // entries here will have hoverbuttons on by default
+    'hover': {
+      // 'br': true would turn on hoverbuttons for all pages in the .br domain
+      'domain': {},
+      // 'ja': true would turn on hoverbuttons for all browsers requesting Japanese
+      'lang': {}
+    },
+    // entries here will have sticky buttons on by default, assuming they also have hoverbuttons
+    'sticky': {
+      'domain': {},
+      'lang': {
+        'ja': true,
+        'ko': true
+      }
+    }
   },
   // valid config parameters that may be passed as data-pin-* with your call to pinit.js
   'configParam': [
+    // set to "true" to show sticky Save buttons on mobile devices
+    'sticky',
     // set to "false" to show static Save buttons (breaking change, 20171003)
     'save',
     // set to "true" to show hoverbuttons, "false" to force off
@@ -2027,6 +2252,18 @@
     // legacy parameter for Pin It button shape (please use data-pin-round="true" instead)
     'shape'
   ],
+  'sticky': {
+    // initialization values
+    'pageY': 0,
+    'hazChange': false,
+    'hazTouch': false,
+    // shall we automatically run on load?
+    'runOnLoad': true,
+    // wait this long between observation checks
+    'obsDelay': 100,
+    // vertical center line
+    'scanAt': 3
+  },
   // smallest image for which we will show a hoverbutton
   'hoverButtonMinImgSize': 119,
   // top and left offsets for hoverbuttons
@@ -2081,6 +2318,7 @@
     'embed_pin_native': 'native',
     'button_pinit': 'pinOne',
     'button_pinit_floating': 'pinOne',
+    'button_pinit_sticky': 'pinOne',
     'button_pinit_bookmarklet': 'pinAny',
     'button_follow': 'follow',
     'embed_board_ft': 'follow',
@@ -2089,6 +2327,7 @@
     'repin': 'repin',
     'button_pinit_repin': 'repin',
     'button_pinit_floating_repin': 'repinHoverButton',
+    'button_pinit_sticky_repin': 'repinHoverButton',
     'embed_pin_repin': 'repin',
     'embed_pin_repin_small': 'repin',
     'embed_pin_repin_medium': 'repin',
@@ -2099,7 +2338,10 @@
       'www': true,
       'uk': true,
       'br': true,
+      'ja': 'jp',
       'jp': true,
+      'ko': 'kr',
+      'kr': true,
       'fr': true,
       'es': true,
       'pl': true,
@@ -2115,7 +2357,6 @@
       'se': true,
       'cz': true,
       'gr': true,
-      'kr': true,
       'ro': true,
       'dk': true,
       'sk': true,
