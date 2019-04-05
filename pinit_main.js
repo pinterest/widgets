@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// ship stickybuttons worldwide
+// update logging parameter names
 
 (function (w, d, n, a) {
   var $ = w[a.k] = {
@@ -211,7 +211,7 @@
                   // does it have a src attribute?
                   if (tag.src) {
                     // log only the URL part
-                    $.f.log('&type=api_error&code=' + r.code + '&msg=' + msg + '&url=' + encodeURIComponent(tag.src.split('?')[0]));
+                    $.f.log('&event=api_error&code=' + r.code + '&msg=' + msg + '&url=' + encodeURIComponent(tag.src.split('?')[0]));
                   }
                 }
               }
@@ -397,8 +397,8 @@
         log: function (str) {
           // don't log from our networks
           if (!$.v.here.match(/^https?:\/\/(.*?\.|)(pinterest|pinadmin)\.com\//)) {
-            // query always starts with guid
-            var query = '?guid=' + $.v.guid;
+            // query always starts with type=pidget&guid=something
+            var query = '?type=pidget&guid=' + $.v.guid;
             // add test version if found
             if ($.a.tv) {
               query = query + '&tv=' + $.a.tv;
@@ -442,7 +442,7 @@
                 'charset': 'utf-8',
                 'pinMethod': 'button',
                 'guid': $.v.guid,
-                'src': $.a.endpoint.bookmark + '?r=' + Math.random() * 99999999
+                'src': $.a.endpoint.bookmark + '?guid=' + $.v.guid
               }
             }));
           },
@@ -455,14 +455,18 @@
               if (q.url && q.url.match(/^http/i) && q.media && q.media.match(/^http/i)) {
                 // log an error for Pin It buttons that don't have default descriptions
                 if (!q.description) {
-                  $.f.log('&type=config_warning&warning_msg=no_description&href=' + encodeURIComponent($.d.URL));
+                  $.f.log('&event=config_warning&warning_msg=no_description&href=' + encodeURIComponent($.d.URL));
                   q.description = $.d.title;
+                }
+                // don't pass more than 500 characters to the board picker
+                if (q.description.length > 500) {
+                  q.description = q.description.substring(0, 500);
                 }
                 // pop the pin form
                 $.w.open(o.href, 'pin' + new Date().getTime(), $.a.pop.base.replace('%dim%', $.a.pop.small));
               } else {
                 // log an error
-                $.f.log('&type=config_error&error_msg=invalid_url&href=' + encodeURIComponent($.d.URL));
+                $.f.log('&event=config_error&error_msg=invalid_url&href=' + encodeURIComponent($.d.URL));
                 // fire up the bookmarklet and hope for the best
                 $.f.util.pinAny();
               }
@@ -470,20 +474,24 @@
               // we're pinning an image
               if (o.media) {
                 if (!o.url) {
-                  $.f.log('&type=config_warning&warning_msg=no_url&href=' + encodeURIComponent($.d.URL));
+                  $.f.log('&event=config_warning&warning_msg=no_url&href=' + encodeURIComponent($.d.URL));
                   o.url = $.d.URL;
                 }
                 if (!o.description) {
-                  $.f.log('&type=config_warning&warning_msg=no_description&href=' + encodeURIComponent($.d.URL));
+                  $.f.log('&event=config_warning&warning_msg=no_description&href=' + encodeURIComponent($.d.URL));
                   o.description = $.d.title;
                 }
+                // don't pass more than 500 characters to the board picker
+                if (o.description.length > 500) {
+                  o.description = o.description.substring(0, 500);
+                }
                 // pop the pin form
-                $.f.log('&type=button_pinit_custom');
+                $.f.log('&event=button_pinit_custom');
                 o.href = $.v.config.pinterest + '/pin/create/button/?guid=' + $.v.guid + '&url=' + encodeURIComponent(o.url) + '&media=' + encodeURIComponent(o.media) + '&description=' + encodeURIComponent(o.description);
                 $.w.open(o.href, 'pin' + new Date().getTime(), $.a.pop.base.replace('%dim%', $.a.pop.small));
               } else {
                 // no media
-                $.f.log('&type=config_error&error_msg=no_media&href=' + encodeURIComponent($.d.URL));
+                $.f.log('&event=config_error&error_msg=no_media&href=' + encodeURIComponent($.d.URL));
                 $.f.util.pinAny();
               }
             }
@@ -683,7 +691,7 @@
                   x = '&x=' + encodeURIComponent(x);
                 }
               }
-              $.f.log('&type=' + log + '&lang=' + $.v.lang + '&sub=' + $.v.sub + x + '&href=' + encodeURIComponent(href));
+              $.f.log('&event=click&target=' + log + '&lang=' + $.v.lang + '&sub=' + $.v.sub + x + '&href=' + encodeURIComponent(href));
               if (typeof $.f.util[$.a.util[log]] === 'function') {
                 // got a special utility handler? run it
                 $.f.util[$.a.util[log]]({'el': el, 'href': href, 'v': v});
@@ -831,7 +839,7 @@
               href = $.v.config.pinterest + $.a.path.create + 'guid=' + $.v.guid;
               href = href + '&url=' + encodeURIComponent(c.url || $.d.URL);
               href = href + '&media=' + encodeURIComponent(c.media || el.src);
-              href = href + '&description=' + encodeURIComponent($.f.getSelection() || c.description || el.title || el.alt || $.d.title);
+              href = href + '&description=' + encodeURIComponent($.f.getSelection() || c.description || el.title || $.d.title);
               if (sticky) {
                 log = 'button_pinit_sticky';
               } else {
@@ -863,9 +871,9 @@
             // log impressions after a button has actually rendered
             if (!$.v.hazLoggedHoverButton) {
               if (sticky) {
-                $.f.log('&type=impression_sticky' + impressionLogExtras);
+                $.f.log('&event=impression_sticky' + impressionLogExtras);
               } else {
-                $.f.log('&type=impression_floating' + impressionLogExtras);
+                $.f.log('&event=impression_floating' + impressionLogExtras);
               }
               $.v.hazLoggedHoverButton = true;
             }
@@ -886,24 +894,21 @@
           var t, el, src;
           t = v || $.w.event;
           el = $.f.getEl(t);
-          if (el) {
-            src = $.f.getData(el, 'media') || el.src;
-            if (el.tagName === 'IMG' && src && !src.match(/^data/) && !src.match(/\.webp/) && !$.f.getData(el, 'no-hover') && !$.f.get(el, 'nopin') && !$.f.getData(el, 'nopin')) {
-              // we are inside an image
-              if (!$.v.hazHoverButton) {
-                // show the hoverbutton
-                $.v.hazHoverButton = true;
-              }
-              $.f.showHoverButton(el);
-            } else {
-              // we are outside an image. Do we need to hide the hoverbutton?
-              if ($.v.hazHoverButton) {
-                // don't hide the hoverbutton if we are over it
-                if (el !== $.s.hoverButton) {
-                  // hide it
-                  $.v.hazHoverButton = false;
-                  $.f.kill($.s.hoverButton);
-                }
+          if ($.f.canHazButton(el)) {
+            // we are inside an image
+            if (!$.v.hazHoverButton) {
+              // show the hoverbutton
+              $.v.hazHoverButton = true;
+            }
+            $.f.showHoverButton(el);
+          } else {
+            // we are outside an image. Do we need to hide the hoverbutton?
+            if ($.v.hazHoverButton) {
+              // don't hide the hoverbutton if we are over it
+              if (el !== $.s.hoverButton) {
+                // hide it
+                $.v.hazHoverButton = false;
+                $.f.kill($.s.hoverButton);
               }
             }
           }
@@ -1102,16 +1107,15 @@
                   'text': p.board.name,
                   'href': boardUrl
                 }
+                buttonUrl = boardUrl + 'follow/?guid=' + $.v.guid;
                 if (r.data.section) {
                   template.hd.board = {
                     text: r.data.section.title,
                     href: boardUrl + r.theCall.split('/pins/')[0].split('/').pop() + '/'
                   }
-                  buttonUrl = template.hd.board.href + 'follow/?guid=' + $.v.guid;
                   buttonLog = 'embed_section_ft';
                   $.v.countSection = $.v.countSection + 1;
                 } else {
-                  buttonUrl = boardUrl + 'follow/?guid=' + $.v.guid;
                   buttonLog = 'embed_board_ft';
                   template.ft.href = buttonUrl;
                   $.v.countBoard = $.v.countBoard + 1;
@@ -1148,7 +1152,7 @@
             if (r.data && r.data[0]) {
               p = r.data[0];
               if (p.error) {
-                $.f.log('&type=api_error&code=embed_pin_not_found&pin_id=' + p.id);
+                $.f.log('&event=api_error&code=embed_pin_not_found&pin_id=' + p.id);
                 return false;
               }
               if (!p.rich_metadata) {
@@ -1820,7 +1824,7 @@
 
           // wait one second and then send a logging ping
           $.w.setTimeout(function () {
-            var str = '&type=pidget&sub=' + $.v.sub + '&button_count=' + $.v.countButton + '&follow_count=' + $.v.countFollow + '&pin_count=' + $.v.countPin;
+            var str = '&event=init&sub=' + $.v.sub + '&button_count=' + $.v.countButton + '&follow_count=' + $.v.countFollow + '&pin_count=' + $.v.countPin;
             if ($.v.canHazHoverButtons) {
               str = str + '&button_hover=1';
             }
@@ -1959,15 +1963,39 @@
           return { 's': $.v.lang, 'd': $.v.sub};
         },
 
-        // BEGIN STICKY BUTTONS
+        // should this element be allowed a hovering or sticky Save button?
+        canHazButton: function (el) {
+          var src, r = false;
+          // is the candidate element an image?
+          if (el && el.tagName && el.tagName === 'IMG') {
+            // check for data-pin-media first, then src attribute
+            src = $.f.getData(el, 'media') || el.src;
+            // do we have source?
+            if (src) {
+              // can source be crawled by our back end?
+              if (src.match(/^https?:\/\//)) {
+                // do we have data-pin-no-hover (canonical) or data-pin-nohover (community-generated)
+                if (!$.f.getData(el, 'no-hover') && !$.f.getData(el, 'nohover')) {
+                  // do we have data-pin-nopin (canonical) or data-nopin (community-generated)?
+                  if (!$.f.getData(el, 'nopin') && !$.f.get(el, 'data-nopin')) {
+                    r = true;
+                  }
+                }
+              }
+            }
+          }
+          return r;
+        },
+
+         // BEGIN STICKY BUTTONS
 
         sticky: {
           // given point X and Y, tell us if there's an image
           find: function (o) {
-            var el, r, rect;
+            var el, r;
             r = {};
             el = $.d.elementFromPoint(o.x,  o.y);
-            if (el && el.tagName && el.tagName === 'IMG') {
+            if ($.f.canHazButton(el)) {
               r = {
                 rect: el.getBoundingClientRect(),
                 img: el
@@ -1995,7 +2023,7 @@
                   x: x,
                   y: $.w.innerHeight / $.a.sticky.scanAt
                 });
-                if (el.rect && el.img && el.img.src && el.img.src.match(/^https?:\/\//) && !key[el.img.src]) {
+                if (el.rect && el.img && !key[el.img.src]) {
                   key[el.img.src] = true;
                   found.push({
                     img: el.img,
@@ -2124,7 +2152,7 @@
             // got very old IE?
             if ($.v.userAgent.match(/MSIE [5-8]/)) {
               dq = true;
-              $.f.log('&type=oldie_error&ua=' + encodeURIComponent($.v.userAgent));
+              $.f.log('&event=oldie_error&ua=' + encodeURIComponent($.v.userAgent));
             }
           }
 
@@ -2196,7 +2224,7 @@
 }(window, document, navigator, {
   'k': 'PIN_' + new Date().getTime(),
   // test version
-  'tv': '2019012201',
+  'tv': '2019040401',
   // we'll look for scripts whose source matches this, and extract config parameters
   'me': /pinit\.js$/,
   // pinterest domain regex
@@ -2862,7 +2890,7 @@
   },
   // a Sass-like object that compiles into an inline stylesheet
   'styles': {
-    '._embed_grid': {
+    'span._embed_grid': {
       'width': '100%',
       'max-width': 237 + 20 + 'px',
       'min-width': 60 * 2 + 20 + 'px',
@@ -2881,6 +2909,7 @@
         'position': 'relative',
         'font': 'inherit',
         'cursor': 'inherit',
+        'color': 'inherit',
         'box-sizing': 'inherit',
         'margin': '0',
         'padding': '0',
@@ -3054,7 +3083,7 @@
         '._bd ._ct ._col': { 'width': '10%' }
       }
     },
-    '._embed_pin': {
+    'span._embed_pin': {
       'width': '100%',
       'min-width': '160px',
       'max-width': '236px',
@@ -3073,6 +3102,7 @@
         'position': 'relative',
         'font': 'inherit',
         'cursor': 'inherit',
+        'color': 'inherit',
         'box-sizing': 'inherit',
         'margin': '0',
         'padding': '0',
