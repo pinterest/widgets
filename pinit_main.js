@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// story pins: be smarter about splicing away page 2
+// use POST rather than GET to log.pinterest.com
 (function (w, d, n, a) {
   var $ = (w[a.k] = {
     w: w,
@@ -457,15 +457,16 @@
           }
         },
 
-        // send logging information
+        // POST to log.pinterest.com
         log: function (str) {
           // don't log from our networks
           if (
             !$.v.here.match(/^https?:\/\/(.*?\.|)(pinterest|pinadmin)\.com\//)
           ) {
             // query always starts with type=pidget&guid=something
-            var query = "?type=pidget&guid=" + $.v.guid,
-              ping = new Image();
+            var query = "type=pidget&guid=" + $.v.guid,
+              // our new request
+              xhr = new XMLHttpRequest();
             // add test version if found
             if ($.a.tv) {
               query = query + "&tv=" + $.a.tv;
@@ -480,9 +481,14 @@
             }
             // add the page we're looking at right now
             query = query + "&via=" + encodeURIComponent($.v.here);
-            ping.src = $.a.endpoint.log + query;
-
-            // $.f.call($.a.endpoint.log + query);
+            // debug what we're about to POST
+            $.f.debug('Logging: ', query);
+            // set up an asynchronous POST to log.pinterest.com
+            xhr.open('POST', $.a.endpoint.log, true);
+            // let the server know we're about to send a form
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            // send our query string (do not use FormData, which may not be supported for old browsers)
+            xhr.send(query);
           }
         },
 
@@ -3187,7 +3193,7 @@
 })(window, document, navigator, {
   k: "PIN_" + new Date().getTime(),
   // version for logging
-  tv: "2020072702",
+  tv: "2020090301",
   // we'll look for scripts whose source matches this, and extract config parameters
   me: /pinit\.js$/,
   // pinterest domain regex
