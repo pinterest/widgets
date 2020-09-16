@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// use POST rather than GET to log.pinterest.com
+// returning to GET request for logging
 (function (w, d, n, a) {
   var $ = (w[a.k] = {
     w: w,
@@ -17,8 +17,6 @@
           if ($.v.config.debug) {
             if ($.w.console && $.w.console.log) {
               $.w.console.log(obj);
-            } else {
-              $.d.URL = $.d.URL + "#" + obj;
             }
           }
         },
@@ -457,16 +455,15 @@
           }
         },
 
-        // POST to log.pinterest.com
+        // send logging information
         log: function (str) {
           // don't log from our networks
           if (
-            !$.v.here.match(/^https?:\/\/(.*?\.|)(pinterest|pinadmin)\.com\//)
+            !$.v.here.url.match(/^https?:\/\/(.*?\.|)(pinterest|pinadmin)\.com\//)
           ) {
             // query always starts with type=pidget&guid=something
-            var query = "type=pidget&guid=" + $.v.guid,
-              // our new request
-              xhr = new XMLHttpRequest();
+            var query = "?type=pidget&guid=" + $.v.guid,
+              ping = new Image();
             // add test version if found
             if ($.a.tv) {
               query = query + "&tv=" + $.a.tv;
@@ -480,15 +477,19 @@
               query = query + "&tag=" + $.v.config.tag;
             }
             // add the page we're looking at right now
-            query = query + "&via=" + encodeURIComponent($.v.here);
-            // debug what we're about to POST
-            $.f.debug('Logging: ', query);
-            // set up an asynchronous POST to log.pinterest.com
-            xhr.open('POST', $.a.endpoint.log, true);
-            // let the server know we're about to send a form
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            // send our query string (do not use FormData, which may not be supported for old browsers)
-            xhr.send(query);
+            query = query + "&via=" + encodeURIComponent($.v.here.url);
+            // did we derive via from an alternate to document.URL
+            if ($.v.here.src !== 'doc') {
+              // pin, canonical, or og
+              query = query + "&viaSrc=" + $.v.here.src;
+            }
+            // did we modify this URL due to a forbidden parameter?
+            if ($.v.here.mod) {
+              query = query + "&viaMod=1";
+            }
+            // debug what we're about to send
+            $.f.debug("Logging: " + query);
+            ping.src = $.a.endpoint.log + query;
           }
         },
 
@@ -652,10 +653,6 @@
               ) {
                 // log an error for Pin It buttons that don't have default descriptions
                 if (!q.description) {
-                  $.f.log(
-                    "&event=config_warning&warning_msg=no_description&href=" +
-                      encodeURIComponent($.d.URL)
-                  );
                   q.description = $.d.title;
                 }
                 // don't pass more than 500 characters to the board picker
@@ -669,11 +666,6 @@
                   $.a.pop.base.replace("%dim%", $.a.pop.size)
                 );
               } else {
-                // log an error
-                $.f.log(
-                  "&event=config_error&error_msg=invalid_url&href=" +
-                    encodeURIComponent($.d.URL)
-                );
                 // fire up the bookmarklet and hope for the best
                 $.f.util.pinAny();
               }
@@ -681,17 +673,9 @@
               // we're pinning an image
               if (o.media) {
                 if (!o.url) {
-                  $.f.log(
-                    "&event=config_warning&warning_msg=no_url&href=" +
-                      encodeURIComponent($.d.URL)
-                  );
-                  o.url = $.d.URL;
+                  o.url = $.v.here.url;
                 }
                 if (!o.description) {
-                  $.f.log(
-                    "&event=config_warning&warning_msg=no_description&href=" +
-                      encodeURIComponent($.d.URL)
-                  );
                   o.description = $.d.title;
                 }
                 // don't pass more than 500 characters to the board picker
@@ -717,10 +701,6 @@
                 );
               } else {
                 // no media
-                $.f.log(
-                  "&event=config_error&error_msg=no_media&href=" +
-                    encodeURIComponent($.d.URL)
-                );
                 $.f.util.pinAny();
               }
             }
@@ -1074,7 +1054,7 @@
               // set the button href
               href =
                 $.v.config.pinterest + $.a.path.create + "guid=" + $.v.guid;
-              href = href + "&url=" + encodeURIComponent(c.url || $.d.URL);
+              href = href + "&url=" + encodeURIComponent(c.url || $.v.here.url);
               href = href + "&media=" + encodeURIComponent(c.media || el.src);
               href =
                 href +
@@ -2313,7 +2293,7 @@
             o = {
               do: $.f.getData(a, "do"),
               id: $.f.getData(a, "id"),
-              url: $.f.getData(a, "url") || p.url || $.d.URL,
+              url: $.f.getData(a, "url") || p.url || $.v.here.url,
               media: $.f.getData(a, "media") || p.media,
               description:
                 $.f.getData(a, "description") || p.description || $.d.title,
@@ -2703,9 +2683,6 @@
                   $.v.config[$.a.configParam[j]] = p;
                 }
               }
-              if ($.v.config.here) {
-                $.v.here = $.v.config.here;
-              }
               // burn after reading to prevent future calls from re-reading config params
               $.f.kill(script[i]);
             }
@@ -3053,10 +3030,110 @@
 
         // END STICKY BUTTONS
 
+        // set global $.v.here to the scrubbed version of pin:url, canonical URL, og:url, or document.URL
+        getHere: function () {
+          var i,
+            link = $.d.getElementsByTagName("LINK"), canonicalUrl = '',
+            meta = $.d.getElementsByTagName("META"), pinUrl = '', ogUrl = '',
+            scrub = function(input) {
+              var i, j, param, keyval, foundForbiddenKey = false, query = '', separator = '?',
+                // remove anything after the hash and then split into path and query at the ?
+                part = input.url.split('#')[0].split('?');
+              // do we have a query?
+              if (part[1]) {
+                // split query into key/value pairs
+                param = part[1].split('&');
+                // check each param
+                for (i = 0; i < param.length; i = i + 1) {
+                  // split pair into key and value
+                  keyval = param[i].split('=');
+                  // check if we have exactly two
+                  if (keyval.length === 2) {
+                    // check each bad key pattern
+                    for (j = 0; j < $.a.forbiddenQueryKey.length; j = j + 1) {
+                      // does the name matches a forbiddenQueryKey pattern?
+                      if (keyval[0].match($.a.forbiddenQueryKey[j])) {
+                        // set the bad flag
+                        foundForbiddenKey = true;
+                        // quit checking
+                        break;
+                      }
+                    }
+                    // if the parameter name does not match one of our bad parameters, add it to the query
+                    if (!foundForbiddenKey) {
+                      // append separator, key, equals, and value
+                      query = query + separator + keyval[0] + '=' + keyval[1];
+                      // change separator to '&' for second and subsequent parameters
+                      separator = '&';
+                    }
+                  }
+                }
+              }
+              // part[0] contains scheme, domain, and path
+              return ({
+                // reassemble path and scrubbed query
+                url: part[0] + query,
+                // echo back the source we gave
+                src: input.src,
+                // mod will be true if we found at least one forbidden key
+                mod: foundForbiddenKey
+              });
+            },
+            // default what we're going to return to the scrubbed version of document.URL
+            here = scrub({
+              url: $.d.URL,
+              src: 'doc'
+            });
+          // find first pin:url or og:url
+          for (i = 0; i < meta.length; i = i + 1) {
+            value = meta[i].getAttribute("content");
+            if (value) {
+              // get the property or name
+              key = meta[i].getAttribute("name");
+              if (key) {
+                if (!pinUrl && key.toLowerCase() === "pin:url") {
+                  pinUrl = value;
+                }
+                if (!ogUrl && key.toLowerCase() === "og:url") {
+                  ogUrl = value;
+                }
+              }
+            }
+          }
+          // find first link with canonical URL
+          for (i = 0; i < link.length; i = i + 1) {
+            if (link[i].rel && link[i].rel.toLowerCase() === "canonical" && link[i].href) {
+              canonicalUrl = link[i].href;
+              break;
+            }
+          }
+          // if found, return the scrubbed version of pin:url, canonical URL, or og:url
+          if (pinUrl) {
+            here = scrub({
+              url: pinUrl,
+              src: 'pin'
+            });
+          } else {
+            if (canonicalUrl) {
+               here = scrub({
+                url: canonicalUrl,
+                src: 'canonical'
+              });
+            } else {
+              if (ogUrl) {
+                here = scrub({
+                  url: ogUrl,
+                  src: 'og'
+                });
+              }
+            }
+          }
+          return here;
+        },
+
         init: function () {
           var i,
             t,
-            tld = "com",
             dq = false;
 
           $.d.b = $.d.getElementsByTagName("BODY")[0];
@@ -3076,7 +3153,6 @@
             userAgent: $.w.navigator.userAgent,
             lang: "en",
             urls: $.a.urls,
-            here: $.d.URL.split("#")[0],
             countButton: 0,
             countFollow: 0,
             countPin: 0,
@@ -3089,7 +3165,8 @@
               customGlobal: 0,
               customLocal: 0,
               save: 0
-            }
+            },
+            here: $.f.getHere()
           };
 
           $.f.langLocLookup();
@@ -3130,12 +3207,6 @@
             // add a single event listener to the body for minimal impact
             $.f.listen($.d.b, "click", $.f.click);
 
-            t = $.v.here.split("/");
-
-            if (t[2]) {
-              tld = t[2].split(".").pop();
-            }
-
             if (typeof $.w.ontouchstart === "object") {
               // story pins should always show nav affordances and Save button
               $.v.hazMobile = true;
@@ -3143,17 +3214,8 @@
 
             // do we need to show hoverbuttons?
             if (
-              $.v.config.hover ||
-              $.a.override.hover.domain[tld] ||
-              $.a.override.hover.lang[$.v.lang]
+              $.v.config.hover
             ) {
-              // if we're overriding default configuration we should check for explicit opt-out
-              if ($.a.override.hover.domain[tld]) {
-                $.f.debug("hover: overridden by TLD");
-              }
-              if ($.a.override.hover.lang[$.v.lang]) {
-                $.f.debug("hover: overridden by browser language");
-              }
               if ($.v.config.hover !== "false") {
                 $.f.debug("hover: allowed per config");
                 $.v.canHazHoverButtons = true;
@@ -3193,7 +3255,7 @@
 })(window, document, navigator, {
   k: "PIN_" + new Date().getTime(),
   // version for logging
-  tv: "2020090301",
+  tv: "2020091502",
   // we'll look for scripts whose source matches this, and extract config parameters
   me: /pinit\.js$/,
   // pinterest domain regex
@@ -3203,15 +3265,9 @@
     none: true,
     nothing: true
   },
-  override: {
-    // entries here will have hoverbuttons on by default
-    hover: {
-      // 'br': true would turn on hoverbuttons for all pages in the .br domain
-      domain: {},
-      // 'ja': true would turn on hoverbuttons for all browsers requesting Japanese
-      lang: {}
-    }
-  },
+  forbiddenQueryKey: [
+    /password/gi
+  ],
   // valid config parameters that may be passed as data-pin-* with your call to pinit.js
   configParam: [
     // set to "true" to show sticky Save buttons on mobile devices
