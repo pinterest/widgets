@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// returning to GET request for logging
+// get language from hoverbutton image, not link
 (function (w, d, n, a) {
   var $ = (w[a.k] = {
     w: w,
@@ -985,7 +985,7 @@
             height: $.f.getData(el, "height") || $.v.config.height || "20",
             color: $.f.getData(el, "color") || $.v.config.color || "gray",
             shape: $.f.getData(el, "shape") || $.v.config.shape || "rect",
-            lang: $.f.getData(el, "lang") || $.v.config.lang,
+            lang: $.f.getLang($.f.getData(el, "lang") || $.v.config.lang || $.v.lang),
             // new params
             tall: $.f.getData(el, "tall") || $.v.config.tall,
             round: $.f.getData(el, "round") || $.v.config.round
@@ -1164,6 +1164,7 @@
         // each kind of widget has its own structure
         structure: {
           buttonPin: function (r, options) {
+            $.v.countButton = $.v.countButton + 1;
             var template, formatCount, formattedCount, sep;
             template = {
               className: "button_pin",
@@ -1637,7 +1638,13 @@
                   );
                   // if we can tell it's a recipe, get rid of page 2
                   if (metadata.template_type === 1 && pin.story_pin_data.pages.length > 1) {
-                    pin.story_pin_data.pages.splice(1, 1);
+                    var vv = metadata.version.split('.');
+                    if (vv[0] === '0') {
+                      // if we're below 0.10, remove the second page
+                      if (vv[1] && (vv[1] - 0) < 10) {
+                        pin.story_pin_data.pages.splice(1, 1);
+                      }
+                    }
                   }
                   if (pin.story_pin_data.page_count) {
                     var progressIndicator = {};
@@ -2070,17 +2077,25 @@
                   makeStaticPin();
                 }
 
-                var myFooter;
+                var myFooter, myTitle;
                 // native pin
                 if (pin.native_creator) {
+                  // story pins 0.10.0 and up have a pin_title field
+                  myTitle =
+                    (((pin.story_pin_data || {}).metadata || {}).pin_title) ||
+                    // dig through pages
+                    seekTitle((pin.story_pin_data || {}).pages) ||
+                    // when all else fails, fall back to about-this-creator line
+                    pin.native_creator.about;
+                    // replace all space-ish characters (including hard returns, soft returns, and tabs) with true spaces
+                  myTitle = myTitle.replace(/\s/g, ' ')
+                    // ... and then replace all multiple spaces with a single space
+                    .replace(/  +/g, ' ');
                   myFooter = {
                     native: true,
                     url: pin.native_creator.profile_url,
                     // might be a story pin; might also be another kind of native pin
-                    title:
-                      seekTitle((pin.story_pin_data || {}).pages) ||
-                      myDescription ||
-                      pin.native_creator.about,
+                    title: myTitle,
                     avatar: pin.native_creator.image_small_url,
                     credit: $.a.strings[options.lang].publishedBy,
                     name: pin.native_creator.full_name
@@ -2295,14 +2310,13 @@
               id: $.f.getData(a, "id"),
               url: $.f.getData(a, "url") || p.url || $.v.here.url,
               media: $.f.getData(a, "media") || p.media,
-              description:
-                $.f.getData(a, "description") || p.description || $.d.title,
+              description: $.f.getData(a, "description") || p.description || $.d.title,
               custom: cf || $.v.config.custom,
               count: $.f.getData(a, "count") || $.v.config.count,
               color: $.f.getData(a, "color") || $.v.config.color,
               round: $.f.getData(a, "round") || $.v.config.round,
               tall: $.f.getData(a, "tall") || $.v.config.tall,
-              lang: $.f.getData(a, "lang") || $.v.config.lang,
+              lang: $.f.getLang($.f.getData(a, "lang") || $.v.config.lang || $.v.lang),
               save: $.f.getData(a, "save") || $.v.config.save
             };
 
@@ -2321,8 +2335,6 @@
               $.v.log.pinit = 1;
             }
 
-            $.f.checkLang(o);
-
             // how to tell what kind of button we need to make
             if (o.media) {
               // it's a properly-configured Any Image button
@@ -2336,11 +2348,11 @@
                 o.log = "button_pinit_bookmarklet";
               }
             }
-            // increment here so we count custom buttons
-            $.v.countButton = $.v.countButton + 1;
 
             // custom button: remove href, listen for click
             if (o.custom) {
+              // increment here so we count custom buttons
+              $.v.countButton = $.v.countButton + 1;
               // remove href, prevent default behavior
               a.removeAttribute("href");
               // tell us what to log
@@ -2409,9 +2421,8 @@
             o = {
               custom: $.f.getData(a, "custom"),
               tall: $.f.getData(a, "tall"),
-              lang: $.f.getData(a, "lang") || $.v.config.lang
+              lang: $.f.getLang($.f.getData(a, "lang") || $.v.config.lang || $.v.lang)
             };
-            $.f.checkLang(o);
             p = $.f.getPath(a.href);
             if (p.length) {
               r.name = a.textContent;
@@ -2468,7 +2479,7 @@
                 height: $.f.getData(a, "height") - 0 || $.v.config.grid.height,
                 width: $.f.getData(a, "width") || null,
                 noscroll: $.f.getData(a, "noscroll") || null,
-                lang: $.f.getData(a, "lang") || $.v.config.lang
+                lang: $.f.getLang($.f.getData(a, "lang") || $.v.config.lang || $.v.lang)
               };
 
               // is it a Board?
@@ -2486,7 +2497,6 @@
               if (sectionLevelError) {
                 boardOrSection = "board";
               }
-              $.f.checkLang(o);
               $.f.getLegacy.grid(a, o);
               bs = "";
               if ($.w.location.protocol === "https:") {
@@ -2535,9 +2545,8 @@
                 height: $.f.getData(a, "height") - 0 || $.v.config.grid.height,
                 width: $.f.getData(a, "width") || null,
                 noscroll: $.f.getData(a, "noscroll") || null,
-                lang: $.f.getData(a, "lang") || $.v.config.lang
+                lang: $.f.getLang($.f.getData(a, "lang") || $.v.config.lang || $.v.lang)
               };
-              $.f.checkLang(o);
               $.f.getLegacy.grid(a, o);
               bs = "";
               if ($.w.location.protocol === "https:") {
@@ -2559,7 +2568,7 @@
               o = {
                 width: $.f.getData(a, "width") || null,
                 terse: $.f.getData(a, "terse") || null,
-                lang: $.f.getData(a, "lang") || $.v.config.lang
+                lang: $.f.getLang($.f.getData(a, "lang") || $.v.config.lang || $.v.lang)
               };
               bs = "";
               if ($.w.location.protocol === "https:") {
@@ -2647,14 +2656,6 @@
           } else {
             $.f.debug("exposing $.f.build at " + $.v.config.util + ".build");
             util.build = $.f.build;
-          }
-        },
-
-        // be sure we have requested strings for language
-        checkLang: function (o) {
-          // do we have these strings?
-          if (!$.a.strings[o.lang]) {
-            o.lang = $.v.config.lang;
           }
         },
 
@@ -2778,104 +2779,40 @@
           }, 1000);
         },
 
-        // given window.navigator.language, return appropriate strings and domain
-        langLocLookup: function () {
-          var t, i, lang, locale, hazAltDomain, q;
-
-          // defaults: English, WWW
-          $.v.lang = "en";
-          $.v.sub = "www";
-
-          // try window.navigator.language first
-          t = $.n.language || $.v.lang;
-          $.f.debug("Looking up language and domain for " + t);
-
+        // given a possible source of strings, set $.v.lang to the best match
+        getLang: function (input) {
+          var t, i, lang = $.a.lang, langloc;
+          // did somebody hand us a non-string?
+          if (typeof input !== "string") {
+            input = lang;
+          }
           // clean and split
-          t = t.toLowerCase();
+          t = input.toLowerCase();
+          // any non-alphanumeric character becomes a space
           t = t.replace(/[^a-z0-9]/g, " ");
+          // strip leading and trailing spaces
           t = t.replace(/^\s+|\s+$/g, "");
+          // collapse multiple spaces
           t = t.replace(/\s+/g, " ");
+          // split on space; now we have ["en"] or ["en", "uk"] or ["bs", "latn", "ba"]
           t = t.split(" ");
-
-          // fix three-parters like bs-latn-ba
-          if (t.length > 2) {
-            for (i = t.length - 1; i > -1; i = i - 1) {
-              if (t[i].length !== 2) {
-                t.splice(i, 1);
-              }
-            }
-          }
-
-          // do we have strings that match t[0];
-          if (t[0]) {
-            lang = t[0];
-            // is there an immediate match for language in strings?
-            if ($.a.strings[lang]) {
-              $.v.lang = lang;
-            }
-            // is there an immediate match for language in domains?
-            if ($.a.save.domain[lang]) {
-              // fix one-part navigator.language trouble (jp, kr)
-              if (typeof $.a.save.domain[lang] === "string") {
-                $.v.sub = $.a.save.domain[lang];
-              } else {
-                $.v.sub = lang;
-              }
-            }
-
-            // do we have a locale?
-            if (t[1]) {
-              locale = t[1];
-              if (locale !== lang) {
-                hazAltDomain = false;
-                q = $.a.save.lookup[lang];
-                // find it in list?
-                if (q) {
-                  // bare domain like fi needs to allow fi-us
-                  if (q === true) {
-                    if (!$.a.save.domain[locale]) {
-                      $.v.sub = "www";
-                    }
-                  } else {
-                    // some domains don't match string abbreviation
-                    if (q.d === locale) {
-                      // domain matches main default, as for hi-in
-                      $.v.sub = q.d;
-                    } else {
-                      // got alt?
-                      if (q.alt) {
-                        if (q.alt[locale]) {
-                          if (typeof q.alt[locale] === "string") {
-                            // alt dom is a string, as for gb = uk, no lookup needed
-                            $.v.sub = q.alt[locale];
-                          } else {
-                            if (q.alt[locale].d) {
-                              // domain is different, as for pt-br
-                              $.v.sub = q.alt[locale].d;
-                              hazAltDom = true;
-                            }
-                            if (q.alt[locale].s) {
-                              // strings are different as for fr-be or tr-cy
-                              $.v.lang = q.alt[locale].s;
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                // if we don't have an alternate domain, use the default for this domain
-                if (!hazAltDomain) {
-                  if ($.a.save.domain[locale]) {
-                    $.v.sub = locale;
-                  }
+          // init to English
+          if (t.length) {
+            // do we support the base language?
+            if ($.a.strings[t[0]]) {
+              lang = t[0];
+              // if there's anything left we may have a lang-loc like pt-br
+              if (t.length) {
+                // pop the locale off the end to catch three-parters
+                langloc = lang + "-" + t[t.length - 1];
+                // do we support lang+loc
+                if ($.a.strings[langloc]) {
+                  lang = langloc;
                 }
               }
             }
           }
-          $.f.debug("Lang: " + $.v.lang);
-          $.f.debug("Subdomain: " + $.v.sub);
-          return { s: $.v.lang, d: $.v.sub };
+          return lang;
         },
 
         // should this element be allowed a hovering or sticky Save button?
@@ -3139,6 +3076,8 @@
           $.d.b = $.d.getElementsByTagName("BODY")[0];
           $.d.h = $.d.getElementsByTagName("HEAD")[0];
           $.v = {
+            // 11-19-2020: collapsing all subdomains to www; may revisit later
+            sub: "www",
             fonts: {},
             guid: "",
             css: "",
@@ -3151,8 +3090,6 @@
               }
             },
             userAgent: $.w.navigator.userAgent,
-            lang: "en",
-            urls: $.a.urls,
             countButton: 0,
             countFollow: 0,
             countPin: 0,
@@ -3166,10 +3103,10 @@
               customLocal: 0,
               save: 0
             },
-            here: $.f.getHere()
+            here: $.f.getHere(),
+            // getLang will default to $.a.lang (en) if it can't find window.navigator.language
+            lang: $.f.getLang($.w.navigator.language)
           };
-
-          $.f.langLocLookup();
 
           // make a 12-digit base-60 number for conversion tracking
           for (i = 0; i < 12; i = i + 1) {
@@ -3255,7 +3192,7 @@
 })(window, document, navigator, {
   k: "PIN_" + new Date().getTime(),
   // version for logging
-  tv: "2020091502",
+  tv: "2020120701",
   // we'll look for scripts whose source matches this, and extract config parameters
   me: /pinit\.js$/,
   // pinterest domain regex
@@ -3400,175 +3337,8 @@
     button_pinit_sticky_repin: "repinHoverButton",
     embed_pin: "open"
   },
-  save: {
-    domain: {
-      www: true,
-      uk: true,
-      br: true,
-      ja: "jp",
-      jp: true,
-      ko: "kr",
-      kr: true,
-      fr: true,
-      es: true,
-      pl: true,
-      de: true,
-      ru: true,
-      it: true,
-      au: true,
-      nl: true,
-      tr: true,
-      id: true,
-      hu: true,
-      pt: true,
-      se: true,
-      cz: true,
-      gr: true,
-      ro: true,
-      dk: true,
-      sk: true,
-      fi: true,
-      in: true,
-      no: true,
-      za: true,
-      nz: true
-    },
-    lookup: {
-      // alt location: cs
-      cs: {
-        d: "cz"
-      },
-      // alt location: dk
-      da: {
-        d: "dk"
-      },
-      // default de / de-de; alt de-at
-      de: {
-        alt: {
-          // Austria
-          at: "de"
-        }
-      },
-      // alt locale: gr; Greece also gets requests for el-cy
-      el: {
-        d: "gr",
-        alt: {
-          // Cyprus
-          cy: "gr"
-        }
-      },
-      // English has many alt domains
-      en: {
-        alt: {
-          // Australia
-          au: "au",
-          // Great Britain
-          gb: "uk",
-          // Ireland
-          ie: "uk",
-          // India
-          in: "in",
-          // New Zealand
-          nz: "nz",
-          // United Kingdom
-          uk: "uk",
-          // South Africa
-          za: "za"
-        }
-      },
-      // Spanish also has many alt domains
-      es: {
-        alt: {
-          // Latin America
-          "419": "www",
-          // Argentina
-          ar: "www",
-          // Chile
-          cl: "www",
-          // Columbia
-          co: "www",
-          // Latin America
-          la: "www",
-          // Mexico
-          mx: "www",
-          // Peru
-          pe: "www",
-          // USA
-          us: "www",
-          // Uruguay
-          uy: "www",
-          // Venezuela
-          ve: "www",
-          // Latin America
-          xl: "www"
-        }
-      },
-      // Finnish: fi and fi-fi work; all others go to lang-domain
-      fi: true,
-      // French: auto-default to France, but do the right things for Belgium and Canada
-      fr: {
-        alt: {
-          be: "fr",
-          ca: "www"
-        }
-      },
-      // Hindu: redirect to India (so does en-in)
-      hi: {
-        d: "in"
-      },
-      hu: true,
-      id: true,
-      it: true,
-      ja: {
-        d: "jp"
-      },
-      ko: {
-        d: "kr"
-      },
-      // Malaysian: send to WWW
-      ms: {
-        d: "www"
-      },
-      nl: {
-        alt: {
-          be: "nl"
-        }
-      },
-      nb: {
-        d: "no"
-      },
-      pl: true,
-      pt: {
-        alt: {
-          // Brazil
-          br: {
-            d: "br",
-            s: "pt-br"
-          }
-        }
-      },
-      ro: true,
-      ru: true,
-      sk: true,
-      sv: {
-        d: "se"
-      },
-      tl: {
-        d: "www"
-      },
-      th: {
-        d: "www"
-      },
-      tr: {
-        alt: {
-          // Cyprus
-          cy: "tr"
-        }
-      },
-      uk: true,
-      vi: true
-    }
-  },
+  // default language (English)
+  lang: "en",
   // translated strings - replace %s with the Pinterest logotype
   strings: {
     // English
