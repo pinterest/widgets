@@ -1,5 +1,5 @@
 /* jshint indent: false, maxlen: false */
-// get language from hoverbutton image, not link
+// pause video if page is blurred
 (function (w, d, n, a) {
   var $ = (w[a.k] = {
     w: w,
@@ -3183,6 +3183,26 @@
 
             // expose utility functions
             $.f.exposeUtil();
+
+            // pause all of our videos if this window is blurred
+            $.f.listen($.w, "blur", function (e) {
+              var videos = $.d.getElementsByTagName('VIDEO');
+              for (var i = 0; i < videos.length; i = i + 1) {
+                if (videos[i].className === $.a.k + "_video") {
+                  videos[i].pause();
+                  // hide all pause controls
+                  var pause = $.d.getElementsByClassName($.a.k + "_pause");
+                  for (var j = 0; j < pause.length; j = j + 1) {
+                    pause[j].style.display = "none";
+                  }
+                  // show all play controls
+                  var play = $.d.getElementsByClassName($.a.k + "_play");
+                  for (var j = 0; j < play.length; j = j + 1) {
+                    play[j].style.display = "block";
+                  }
+                }
+              }
+            });
           }
         }
       };
@@ -3192,7 +3212,7 @@
 })(window, document, navigator, {
   k: "PIN_" + new Date().getTime(),
   // version for logging
-  tv: "2020120701",
+  tv: "2021022601",
   // we'll look for scripts whose source matches this, and extract config parameters
   me: /pinit\.js$/,
   // pinterest domain regex
