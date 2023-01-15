@@ -884,8 +884,8 @@
           el = $.f.getEl(v);
           if (el) {
             log = $.f.getData(el, "log");
-            // custom buttons with child nodes may not pass clicks; check one level up
-            if (!log && el.parentNode) {
+            // custom buttons with child nodes may not pass clicks; check the parents
+            while (!log && el.parentNode) {
               el = el.parentNode;
               log = $.f.getData(el, "log");
             }
