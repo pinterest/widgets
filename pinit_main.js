@@ -2522,9 +2522,7 @@
                   }
 
                   if (r.status === "failure") {
-                    if (boardOrSection === "board") {
-                      // Board does not exist - do nothing
-                    }
+                    // boardOrSection === "board" -- do nothing about a missing board
                     if (boardOrSection === "section") {
                       // API returned an error when checking for the Section level i.e. Section does not exist, so let's show the Board level if it exists
                       $.f.seek.embedBoard(a, href, true);
@@ -3327,8 +3325,7 @@
       fontFamily: true,
       textAlign: true,
       color: true,
-      fontSize: true,
-      display: true
+      fontSize: true
     },
     setData: {
       href: true,
@@ -4376,7 +4373,6 @@
       "border-radius": "%buttonBorderRadius%",
       font:
         'bold 11px/20px "Helvetica Neue", Helvetica, arial, sans-serif !important',
-      "box-sizing": "border-box",
       cursor: "pointer",
       "%prefix%font-smoothing": "antialiased",
       height: "20px",
@@ -4427,7 +4423,6 @@
       position: "relative",
       font: '12px "Helvetica Neue", Helvetica, arial, sans-serif',
       color: "#555",
-      "box-sizing": "border-box",
       "text-align": "center",
       "vertical-align": "baseline",
       "&:hover": {
@@ -4500,7 +4495,6 @@
         color: "#fff!important",
         background: "%saveButtonBackgroundColor% url(%logo%) 3px 50% no-repeat",
         "background-size": "14px 14px",
-        "font-weight": "bold",
         "-webkit-font-smoothing": "antialiased",
         "._count": {
           "text-indent": "0",
