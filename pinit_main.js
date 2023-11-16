@@ -1565,7 +1565,7 @@
                       width: "100%",
                       addClass: "coverMe",
                       backgroundImage: pin.images["237x"].url.replace(
-                        /\/237x\//,
+                        /\/236x\//,
                         "/" + imgWidth + "/"
                       )
                     }
