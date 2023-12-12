@@ -1,0 +1,33 @@
+https://developers.pinterest.com/docs/add-ons/about-addons/
+Add-ons like widgets and buttons are an easy way to put Pinterest content on your site and increase your reach on Pinterest.
+There are 5 add-ons:
+Save button
+Follow button
+Pin widget
+Board widget
+Profile widget
+To use any of these add-ons, add our JavaScript to the page. Include this script once per page, no matter how many buttons or widgets you use. Adding the script more than once may cause problems on your page.
+To immediately load our JavaScript, include this just above your closing </body> tag:
+<script type="text/javascript" async defer src="//assets.pinterest.com/js/pinit.js"></script>
+Best Practices
+
+Update your JavaScript: some companies aren’t allowed to use third-party JavaScript. If you need to host a copy of our code, star our widgets GitHub repository; Opens a new tab. Be sure to update your hosted copy whenever we push updates.
+We read all comments and pull requests, so don’t hesitate to ask questions on the GitHub repository.
+Place our JavaScript in the right spot: if you’re hotlinking our script tag (using the single-line script tag method), put the tag as close to the end of your body tag as possible. You’ll run into trouble if you place our script tag somewhere else, like:
+the document’s head
+a repeating template
+just above an important, visible part of the page in the middle of the body tag
+a long, hard-to-render table tag
+Load the script tag asynchronously: you can asynchronously load our JavaScript by copying and pasting the following snippet anywhere on your page. (This replaces any other pinit.js script you have on your page.)
+<script type="text/javascript">
+  (function (d) {
+    var f = d.getElementsByTagName('SCRIPT')[0],
+      p = d.createElement('SCRIPT');
+    p.type = 'text/javascript';
+    p.async = true;
+    p.src = '//assets.pinterest.com/js/pinit.js';
+    f.parentNode.insertBefore(p, f);
+  })(document);
+</script>
+Avoid script on pages that don’t need it
+Don't include our script tag on pages that don’t have Pinterest add-ons, even if it seems convenient to stick the tag in your global footer template. You don't want the tag on pages with sensitive material.
